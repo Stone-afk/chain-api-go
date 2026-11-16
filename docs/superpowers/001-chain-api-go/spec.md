@@ -5,7 +5,7 @@
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
 **基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1
 **日期 / Date**：2026-11-16  
-**状态 / Status**：已批准；T025 已通过，T026 可启动（Approved; T025 Passed / T026 May Start）
+**状态 / Status**：已批准；T026 已通过，T027 可启动（Approved; T026 Passed / T027 May Start）
 
 ## 0. 变更记录 / Change Log
 
@@ -138,4 +138,4 @@ T023/T024 仅建立测试装配基础，不读取真实凭据、不执行真实 
 
 C-01–C-10 是所有活动 Task 的不变量；C-08/C-09/C-10 分别由 AC-12/AC-12/AC-13 验收。真实验收只在 T036 执行，离线通过不得表述为 AC-10/AC-11 已通过。
 
-Human 已批准 PLAN-v6、CONTEXT-CAUSE-v1、HARNESS-CONTRACT-v1、EVM-CONTRACT-v1 与 T025。T017–T025 已通过且相关输入未变的证据继续有效；T026 可进入 EVM/Ethereum/BNB GREEN/Refactor。本次无真实 RPC 或广播授权，不新增 Plan/Task，不修改 constitution 1.1。
+Human 已批准 PLAN-v6、CONTEXT-CAUSE-v1、HARNESS-CONTRACT-v1、EVM-CONTRACT-v1 与 T025/T026。T017–T026 已通过且相关输入未变的证据继续有效；T027 可进入 Bitcoin 测试 RED。本次无真实 RPC 或广播授权，不新增 Plan/Task，不修改 constitution 1.1。

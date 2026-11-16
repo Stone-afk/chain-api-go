@@ -1,23 +1,55 @@
 package evm
 
-import "math/big"
+import (
+	"encoding/hex"
+	"encoding/json"
+	"math/big"
+	"strconv"
+	"strings"
+)
 
 type Address [20]byte
 type Hash [32]byte
 type Data []byte
-type BlockRef struct{}
+type BlockRef struct{ wire string }
 
-func (BlockRef) MarshalJSON() ([]byte, error) { return nil, unsupported() }
-
-func ParseAddress(string) (Address, error)   { return Address{}, unsupported() }
-func ParseHash(string) (Hash, error)         { return Hash{}, unsupported() }
-func ParseData(string) (Data, error)         { return nil, unsupported() }
-func (Address) MarshalJSON() ([]byte, error) { return nil, unsupported() }
-func (Hash) MarshalJSON() ([]byte, error)    { return nil, unsupported() }
-func (Data) MarshalJSON() ([]byte, error)    { return nil, unsupported() }
-func Latest() BlockRef                       { return BlockRef{} }
-func Pending() BlockRef                      { return BlockRef{} }
-func AtNumber(uint64) BlockRef               { return BlockRef{} }
+func Latest() BlockRef           { return BlockRef{wire: "latest"} }
+func Pending() BlockRef          { return BlockRef{wire: "pending"} }
+func AtNumber(n uint64) BlockRef { return BlockRef{wire: quantity(n)} }
+func (b BlockRef) MarshalJSON() ([]byte, error) {
+	if b.wire == "" {
+		return nil, invalid()
+	}
+	return json.Marshal(b.wire)
+}
+func quantity(n uint64) string { return "0x" + strconv.FormatUint(n, 16) }
+func ParseData(s string) (Data, error) {
+	if !strings.HasPrefix(s, "0x") || len(s)%2 != 0 {
+		return nil, invalid()
+	}
+	b, e := hex.DecodeString(s[2:])
+	if e != nil {
+		return nil, invalid()
+	}
+	return Data(b), nil
+}
+func ParseAddress(s string) (Address, error) {
+	b, e := ParseData(s)
+	if e != nil || len(b) != 20 {
+		return Address{}, invalid()
+	}
+	return Address(b), nil
+}
+func ParseHash(s string) (Hash, error) {
+	b, e := ParseData(s)
+	if e != nil || len(b) != 32 {
+		return Hash{}, invalid()
+	}
+	return Hash(b), nil
+}
+func (a Address) MarshalJSON() ([]byte, error) { return json.Marshal("0x" + hex.EncodeToString(a[:])) }
+func (h Hash) MarshalJSON() ([]byte, error)    { return json.Marshal("0x" + hex.EncodeToString(h[:])) }
+func (d Data) MarshalJSON() ([]byte, error)    { return json.Marshal("0x" + hex.EncodeToString(d)) }
 
 type CallRequest struct {
 	From                    Address

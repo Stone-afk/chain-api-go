@@ -5,7 +5,7 @@
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
 **基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1
 **日期 / Date**：2026-11-16  
-**状态 / Status**：已批准；T025 已通过，T026 可启动（Approved; T025 Passed / T026 May Start）
+**状态 / Status**：已批准；T026 已通过，T027 可启动（Approved; T026 Passed / T027 May Start）
 
 ## 0. 变更记录 / Change Log
 
@@ -124,7 +124,7 @@
 
 ### Implementation / 实现
 
-- [ ] **T026 实现完整 EVM 与两具体客户端 / Implement complete EVM and concrete clients**
+- [x] **T026 实现完整 EVM 与两具体客户端 / Implement complete EVM and concrete clients**
   - Scope：`evm/client.go`、`types.go`、`query.go`、`compute.go`、`submit.go`、`ethereum/client.go`、`bnb/client.go`。
   - Dependencies：T025。
   - Acceptance：AC-02、AC-05、AC-12、AC-13；实现经 Human 批准后的 spec EC-01–05/plan §3.2 契约，使新 T025 全部断言实际执行并 GREEN；当前未启动，必须先通过 T025 的 RED/固定 Auditor/Human 门禁。
@@ -246,4 +246,4 @@
 - [ ] 每个 Plan 的聚焦验证完成；真实数据、外部 RPC 与链上提交仅在 T036 去重执行。
 - [ ] 未经批准不提交、不推送、不合并；集成阶段只做结构检查。
 
-Human 已批准 PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1 与 T025；T026 可进入 GREEN/Refactor。T017–T025 的有效证据保留；活动清单仍为 5 Plan / 20 Task，全部 Task ID 与依赖不变。尚无真实 RPC 或交易提交授权。
+Human 已批准 PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1 与 T025/T026；T027 可进入 Bitcoin 测试 RED。T017–T026 的有效证据保留；活动清单仍为 5 Plan / 20 Task，全部 Task ID 与依赖不变。尚无真实 RPC 或交易提交授权。

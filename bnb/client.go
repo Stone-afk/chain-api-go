@@ -9,11 +9,30 @@ import (
 )
 
 type Config struct{ ExpectedChainID big.Int }
-type Client struct{ *evm.Client }
-
-func New(Config, jsonrpc.Caller) (*Client, error) {
-	return nil, apierror.Error{Kind: apierror.Unsupported}
+type Client struct {
+	*evm.Client
+	expectedChainID big.Int
 }
-func (*Client) ValidateNetwork(context.Context) error {
-	return apierror.Error{Kind: apierror.Unsupported}
+
+func New(cfg Config, rpc jsonrpc.Caller) (*Client, error) {
+	if cfg.ExpectedChainID.Sign() <= 0 {
+		return nil, apierror.Error{Kind: apierror.Configuration}
+	}
+	base, err := evm.New(rpc)
+	if err != nil {
+		return nil, err
+	}
+	c := &Client{Client: base}
+	c.expectedChainID.Set(&cfg.ExpectedChainID)
+	return c, nil
+}
+func (c *Client) ValidateNetwork(ctx context.Context) error {
+	actual, err := c.ChainID(ctx)
+	if err != nil {
+		return err
+	}
+	if actual.Cmp(&c.expectedChainID) != 0 {
+		return apierror.Error{Kind: apierror.NetworkMismatch}
+	}
+	return nil
 }

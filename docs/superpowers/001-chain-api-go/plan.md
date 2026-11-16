@@ -5,7 +5,7 @@
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
 **基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1
 **日期 / Date**：2026-11-16  
-**状态 / Status**：已批准；T025 已通过，T026 可启动（Approved; T025 Passed / T026 May Start）
+**状态 / Status**：已批准；T026 已通过，T027 可启动（Approved; T026 Passed / T027 May Start）
 
 ## 0. 变更记录 / Change Log
 
@@ -460,10 +460,10 @@ planning_baseline:
   manifest: not_applicable_single_requirement
 
 workflow_state:
-  current: READY_FOR_T026_GREEN
+  current: READY_FOR_T027_RED
   blocked_tasks: []
-  preserved_completed_tasks: [T017, T018, T019, T020, T021, T022, T023, T024, T025]
-  execution_sequence: [T026_GREEN_REFACTOR, T026_READ_ONLY_AUDIT, T026_HUMAN_GATE]
+  preserved_completed_tasks: [T017, T018, T019, T020, T021, T022, T023, T024, T025, T026]
+  execution_sequence: [T027_RED, T027_READ_ONLY_AUDIT, T027_HUMAN_GATE, T028_GREEN_REFACTOR, T028_READ_ONLY_AUDIT, T028_HUMAN_GATE]
   coder_may_report: [IMPLEMENTED]
   transitions: [IMPLEMENTED, LOCALLY_VERIFIED, READY_FOR_AUDIT, AUDIT_PASSED, DONE]
   done_requires: [valid_snapshot_bound_evidence, auditor_pass_recommendation, human_final_approval]
@@ -598,6 +598,6 @@ CHAIN_API_GO_LIVE_TEST=1 CHAIN_API_GO_LIVE_BROADCAST=1 go test ./internal/test/l
 - Planner：`gpt-6-astra / high`，只读规划。
 - Coder：`gpt-6-astra / low`，只能修改获批 Task 的路径。
 - Auditor：固定 `gpt-5.6-sol / medium`，必须是全新只读上下文；当前运行时未提供该模型时不得静默替换。
-- Human：既有 PLAN-v6、CONTEXT-CAUSE-v1、HARNESS-CONTRACT-v1、EVM-CONTRACT-v1 与 T017–T025 批准保持有效；T026 可进入 GREEN/Refactor → 固定 Auditor → T026 Human 门禁，既有角色和最终 Human 门禁不变。
+- Human：既有 PLAN-v6、CONTEXT-CAUSE-v1、HARNESS-CONTRACT-v1、EVM-CONTRACT-v1 与 T017–T026 批准保持有效；T027 可进入 RED → 固定 Auditor → T027 Human 门禁，既有角色和最终 Human 门禁不变。
 
-T017–T025 已有效通过。T025 的 F5/F6 契约缺口已由 Human 批准 EVM-CONTRACT-v1 解决，新 RED、Controller 验证、固定 Auditor 与 Human 门禁均已通过；T026 可开始。当前没有真实 RPC 或交易提交授权。
+T017–T026 已有效通过。T027 可进入 Bitcoin 测试 RED；当前没有真实 RPC 或交易提交授权。
