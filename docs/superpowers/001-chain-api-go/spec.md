@@ -123,4 +123,4 @@ T023/T024 仅建立测试装配基础，不读取真实凭据、不执行真实 
 
 C-01–C-10 是所有活动 Task 的不变量；C-08/C-09/C-10 分别由 AC-12/AC-12/AC-13 验收。真实验收只在 T036 执行，离线通过不得表述为 AC-10/AC-11 已通过。
 
-Human 已批准 PLAN-v6、CONTEXT-CAUSE-v1 与 HARNESS-CONTRACT-v1。新版 T023 RED、固定 Auditor 门禁及 Human 任务门禁已通过，T024 可进入 GREEN/Refactor；T017–T022 已通过且相关输入未变的证据继续有效。本次无真实 RPC 或广播授权，不新增 Plan/Task，不修改 constitution 1.1。
+Human 已批准 PLAN-v6、CONTEXT-CAUSE-v1 与 HARNESS-CONTRACT-v1。T023/T024 的 RED、GREEN、固定 Auditor 与 Human 任务门禁均已通过，T025 可进入 EVM/Ethereum/BNB 测试 RED；T017–T022 已通过且相关输入未变的证据继续有效。本次无真实 RPC 或广播授权，不新增 Plan/Task，不修改 constitution 1.1。

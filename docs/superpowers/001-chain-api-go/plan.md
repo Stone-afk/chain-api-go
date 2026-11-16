@@ -386,7 +386,7 @@ planning_baseline:
   manifest: not_applicable_single_requirement
 
 workflow_state:
-  current: READY_FOR_T024_GREEN_REFACTOR
+  current: READY_FOR_T025_RED
   blocked_tasks: []
   preserved_completed_tasks: [T017, T018, T019, T020, T021, T022]
   execution_sequence: [T023_RED, T023_READ_ONLY_AUDIT, T024_GREEN_REFACTOR, T024_READ_ONLY_AUDIT]
@@ -522,6 +522,6 @@ CHAIN_API_GO_LIVE_TEST=1 CHAIN_API_GO_LIVE_BROADCAST=1 go test ./internal/test/l
 - Planner：`gpt-6-astra / high`，只读规划。
 - Coder：`gpt-6-astra / low`，只能修改获批 Task 的路径。
 - Auditor：固定 `gpt-5.6-sol / medium`，必须是全新只读上下文；当前运行时未提供该模型时不得静默替换。
-- Human：已批准 PLAN-v6、CONTEXT-CAUSE-v1 与 HARNESS-CONTRACT-v1，并已批准审计通过的 T023。当前按 T024 GREEN/Refactor → 固定 Auditor 恢复受影响工作；既有角色和最终 Human 门禁保持不变。
+- Human：已批准 PLAN-v6、CONTEXT-CAUSE-v1 与 HARNESS-CONTRACT-v1，并已批准审计通过的 T023/T024。当前按 T025 RED → 固定 Auditor → T026 GREEN/Refactor → 固定 Auditor 推进 EVM 子 Plan；既有角色和最终 Human 门禁保持不变。
 
-T017–T023 已有效通过。旧 T023 证据仅保留为历史；新版 T023 已通过 RED、固定审计与 Human 门禁，T024 可启动。当前没有真实 RPC 或交易提交授权。
+T017–T024 已有效通过。旧 T023 证据仅保留为历史；新版 T023/T024 已通过固定审计与 Human 门禁，T025 可启动。当前没有真实 RPC 或交易提交授权。

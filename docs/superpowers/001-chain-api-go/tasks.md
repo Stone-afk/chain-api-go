@@ -101,7 +101,7 @@
 
 ### Implementation / 实现
 
-- [ ] **T024 实现 live harness 基础 / Implement live harness foundation**
+- [x] **T024 实现 live harness 基础 / Implement live harness foundation**
   - Scope：`internal/test/live/config.go`、`manifest.go`、`harness.go`、`config.example.json`。
   - Dependencies：T023。
   - Acceptance：AC-09，继承 AC-04/C-02/05/06/08/09；实现 plan §7.2 HC-01–HC-08，使经审核 T023 测试 GREEN；模板仅 endpoint/Header 环境变量引用和无秘密元数据。无第三方依赖、默认路径、默认客户端、凭据、重试、后台 worker 或真实网络调用。
@@ -245,4 +245,4 @@
 - [ ] 每个 Plan 的聚焦验证完成；真实数据、外部 RPC 与链上提交仅在 T036 去重执行。
 - [ ] 未经批准不提交、不推送、不合并；集成阶段只做结构检查。
 
-Human 已批准 PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1；T017–T023 已通过且证据保持有效，T024 可进入 GREEN/Refactor；活动清单仍为 5 Plan / 20 Task，全部 Task ID 与依赖不变。尚无真实 RPC 或交易提交授权。
+Human 已批准 PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1；T017–T024 已通过且证据保持有效，T025 可进入 EVM/Ethereum/BNB 测试 RED；活动清单仍为 5 Plan / 20 Task，全部 Task ID 与依赖不变。尚无真实 RPC 或交易提交授权。
