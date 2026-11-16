@@ -1,1 +1,15 @@
-{}
+{
+  "targets": {
+    "example": {
+      "endpoint_env": "CHAIN_API_GO_EXAMPLE_ENDPOINT",
+      "header_env": {"Authorization": "CHAIN_API_GO_EXAMPLE_AUTHORIZATION"},
+      "network": "example-network",
+      "max_requests": 10,
+      "max_concurrent": 1,
+      "min_interval": "1s",
+      "total_timeout": "30s",
+      "dynamic_inputs_path": "",
+      "submission_material_path": ""
+    }
+  }
+}
