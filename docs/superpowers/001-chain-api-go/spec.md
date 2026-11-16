@@ -3,14 +3,15 @@
 **规格文档 / Spec**：[spec.md](spec.md)  
 **技术方案 / Plan**：[plan.md](plan.md)  
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
-**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1  
+**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1
 **日期 / Date**：2026-11-16  
-**状态 / Status**：已批准（Approved）
+**状态 / Status**：已批准；T025 已通过，T026 可启动（Approved; T025 Passed / T026 May Start）
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
+| EVM-CONTRACT-v1 | 2026-11-16 | Human 已批准：补齐 EVM 跨包构造入口、首版查询/费用 DTO 字段与存在性、ownership 和 wire 验收；仅修订 PLAN-002/T025–T026 契约，T025 仍限原 10 路径，T026 未启动。保持 5 Plan / 20 Task；不改 T017–T024、constitution 或既有依赖。 |
 | HARNESS-CONTRACT-v1 | 2026-11-16 | Human 已批准：冻结 test-only live harness 的显式配置、raw-byte SHA-256、可取消并发等待、总 deadline context、结果优先级与离线并发验证；只重开 T023/T024，保持 5 Plan / 20 Task、任务 ID 与依赖不变。T017–T022 的未受影响证据保持有效。 |
 | CONTEXT-CAUSE-v1 | 2026-11-16 | Human 批准 `Error.WithContextCause(error) Error` 值方法：仅归一化两个 context 哨兵、取消优先、不保存其他底层错误。复用 T017/T018 的既有路径与 TDD/审核门禁，不新增 Plan 或 Task。 |
 | PLAN-v6 | 2026-11-16 | 将已批准 v5 的混合 Task 改为先行失败测试与依赖它的实现 Task；活动清单为 5 Plan / 20 Task。真实采样、账号 RPC 与受控提交集中至最终验收。补充默认拒绝路径、预算、双向追踪和证据门禁。链、方法范围、AC-01–13 与 constitution 1.1 不变；Human 已明确批准本修订及值语义、`HTTPDoer` 签名裁决。 |
@@ -89,6 +90,20 @@ Tron 的五个 solidified 查询为 Account、NowBlock、BlockByNum、Transactio
 
 上述规则只改变 Go 表达方式，不改变 v5 的链原生结果、合法 null、错误、提交未知和确认语义。Human 批准 `PLAN-v6` 时须明确接受这些字段、返回形式及 HTTPDoer 签名裁决；新增冲突仍按 constitution 8.6/9.4 停止并提交 Human。
 
+### 4.2 EVM-CONTRACT-v1 验收 / Acceptance
+
+本修订响应 T025 固定审计的两项 P1（跨包构造缺口、DTO/字段断言不完整）和两项 P2（大整数所有权、wire/非有限浮点覆盖不足）。AC-05 的“全部查询”指全部既定方法及下列首版类型化字段，未知扩展字段仍可忽略，不等于复制完整执行客户端 Schema。精确 Go 字段、wire 必需性和方法签名冻结在 [plan §3.2](plan.md#32-evm-contract-v1-首版契约--first-release-contract)。
+
+| 条款 / Clause | 可观察验收 / Observable acceptance | 追踪 / Trace |
+|---|---|---|
+| EC-01 构造 / Construction | `evm.New(jsonrpc.Caller) (*evm.Client,error)` 是最小跨包构造入口；拒绝 nil/typed-nil，零 I/O。Ethereum/BNB 仍由各自 New 创建、保存独立预期网络身份并显式 ValidateNetwork；不暴露 rpc 字段或建立统一链入口。 | AC-02/05/12；T025→T026 |
+| EC-02 查询 / Queries | 已确认区块保留父 hash、时间、gas 与交易 hash 列表；交易保留 from/to、nonce、value、input、gas/费用、区块与交易索引；回执保留执行状态或历史 root、gas/费用、合约地址与日志；日志保留完整区块/交易/日志索引关联。完整字段值由 plan §3.2 表冻结，不能只检查 present 或长度。合法 pending/null 与明确零分别表达；缺必需字段或坏格式为 Protocol。 | AC-05/12；T025→T026 |
+| EC-03 所有权 / Ownership | 输入 Config/CallRequest 的大整数和切片不被 SDK 修改；保存的配置深拷贝。所有大整数结果及 FeeHistory 的嵌套金额元素独立拥有存储；修改一个结果不得污染其他字段、结果、fake 保存数据或后续调用。 | AC-05/12；T025→T026 |
+| EC-04 编码与费用 / Wire and fees | Quantity 最短十六进制、Data 偶数位、地址/hash 定长；嵌套 DTO 与列表元素同样校验。FeeHistory 百分位只接受有限、0–100、非递减数值，NaN/±Inf 在 Caller 前拒绝；返回维度与金额/比例合法，允许节点返回少于请求的历史范围。 | AC-02/05；T025→T026 |
+| EC-05 两链与提交 / Concrete clients and submission | 两链分别验证完整方法接线与一次调用；Ethereum 身份样例 1、BNB 身份样例 56（`0x38`），不将这两个值写成网络限制。提交成功 fixture 必须使用非零 hash 并逐字节断言，未知结果/本地拒绝/节点拒绝保持既有分类。 | AC-02/05/13；T025→T026 |
+
+审批只允许恢复 T025 测试与声明骨架修订；仍需新的 RED、固定 Auditor 和 T025 Human 门禁，不能因此启动 T026。T017–T024 已批准且输入未变的证据继续有效；真实数据仍只在 T036 验收。
+
 ## 5. 真实数据验收规则
 
 - 浏览器候选：Etherscan、BscScan、mempool.space/Blockstream、Solana Explorer/Solscan、TRONSCAN。
@@ -123,4 +138,4 @@ T023/T024 仅建立测试装配基础，不读取真实凭据、不执行真实 
 
 C-01–C-10 是所有活动 Task 的不变量；C-08/C-09/C-10 分别由 AC-12/AC-12/AC-13 验收。真实验收只在 T036 执行，离线通过不得表述为 AC-10/AC-11 已通过。
 
-Human 已批准 PLAN-v6、CONTEXT-CAUSE-v1 与 HARNESS-CONTRACT-v1。T023/T024 的 RED、GREEN、固定 Auditor 与 Human 任务门禁均已通过，T025 可进入 EVM/Ethereum/BNB 测试 RED；T017–T022 已通过且相关输入未变的证据继续有效。本次无真实 RPC 或广播授权，不新增 Plan/Task，不修改 constitution 1.1。
+Human 已批准 PLAN-v6、CONTEXT-CAUSE-v1、HARNESS-CONTRACT-v1、EVM-CONTRACT-v1 与 T025。T017–T025 已通过且相关输入未变的证据继续有效；T026 可进入 EVM/Ethereum/BNB GREEN/Refactor。本次无真实 RPC 或广播授权，不新增 Plan/Task，不修改 constitution 1.1。

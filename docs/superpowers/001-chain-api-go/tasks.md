@@ -3,14 +3,15 @@
 **规格文档 / Spec**：[spec.md](spec.md)  
 **技术方案 / Plan**：[plan.md](plan.md)  
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
-**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1  
+**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1
 **日期 / Date**：2026-11-16  
-**状态 / Status**：已批准（Approved）
+**状态 / Status**：已批准；T025 已通过，T026 可启动（Approved; T025 Passed / T026 May Start）
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
+| EVM-CONTRACT-v1 | 2026-11-16 | Human 已批准：仅细化 T025/T026 的 EC-01–05 契约、T025 原十路径与声明预警；保持 5 Plan / 20 Task、全部 ID/依赖及 T017–T024 内容不变。T025 可恢复，T026 未启动。 |
 | HARNESS-CONTRACT-v1 | 2026-11-16 | Human 已批准：冻结 test-only live harness 的显式配置、raw-byte SHA-256、可取消并发等待、总 deadline context、结果优先级与离线并发验证；只重开 T023/T024，保持 5 Plan / 20 Task、任务 ID 与依赖不变。T017–T022 的未受影响证据保持有效。 |
 | CONTEXT-CAUSE-v1 | 2026-11-16 | Human 批准在 T017/T018 既有路径内增加 `Error.WithContextCause(error) Error` 的测试与实现；T017/T018 重新打开，T019 已批准证据保持有效。Plan/Task 总数不变。 |
 | PLAN-v6 | 2026-11-16 | 将 v5 的 T001–T016 标记为被替代的历史 ID；活动任务改为 T017–T036，共 5 Plan / 20 Task。每个行为实现均依赖更早的失败测试 Task；真实 RPC 与受控提交集中到 T036。Human 已明确批准本修订。 |
@@ -113,20 +114,20 @@
 
 ### Tests First / 测试先行
 
-- [ ] **T025 完整 EVM 与两具体客户端测试 / Test complete EVM and concrete clients**
-  - Scope：`evm/types_test.go`、`query_test.go`、`compute_test.go`、`submit_test.go`、`ethereum/client_test.go`、`bnb/client_test.go`；允许相应 `types.go`、`client.go` 声明骨架。
+- [x] **T025 完整 EVM 与两具体客户端测试 / Test complete EVM and concrete clients**
+  - Scope：恰好十路径：`evm/types_test.go`、`evm/query_test.go`、`evm/compute_test.go`、`evm/submit_test.go`、`ethereum/client_test.go`、`bnb/client_test.go`；仅声明骨架 `evm/types.go`、`evm/client.go`、`ethereum/client.go`、`bnb/client.go`。骨架允许 plan §3.2 的完整字段/签名（含 evm.New），仅返回 Unsupported/零值，不实现 T026 行为。
   - Dependencies：T024。
-  - Acceptance：AC-02、AC-05、AC-12、AC-13；覆盖全部已批准查询、计算、提交、网络身份、编码、null/pending、费用互斥和 unknown；额外断言 Has=false/显式零、nullable present 三态、big.Int 不别名。
+  - Acceptance：AC-02、AC-05、AC-12、AC-13；精确覆盖 spec §4.2 EC-01–05 与 plan §3.2：公开构造 seam、完整首版 DTO 字段/必需键/null、四个输入金额及全部输出金额的所有权、嵌套 wire 与 FeeHistory NaN/±Inf/维度、两链独立 1/56 身份、非零提交 hash；保留 Has/费用互斥、nullable 三态、unknown 与零公网风险。
   - Verification：`go test ./evm ./ethereum ./bnb`，产生目标行为缺失的 RED。
-  - Budget：6h；≤100生产行、≤1,100测试行、10路径单元；路径预警已纳入审批。
-  - Done when：Ethereum 与 BNB 分别有可归因 RED，未互相替代。
+  - Budget：最多 70 分钟：规划 20 分钟、Coder 20 分钟、验证与固定 Auditor 最多 30 分钟。声明骨架估计 200–240 行、≤240 行预警（当前 151 行，完整字段/签名使原 100 行失实）；测试优先去重保持 ≤1,100 行，十路径不变。行数不是目标，不据此扩大范围或延长时间。
+  - Done when：十文件编译并进入目标断言 RED，两链分别有可归因证据；EC 风险逐项绑定当前快照，固定 Auditor 只读审核通过后停在 T025 Human 门禁。旧 T025 RED 为历史；批准本契约不等于 T025 完成，不启动 T026。
 
 ### Implementation / 实现
 
 - [ ] **T026 实现完整 EVM 与两具体客户端 / Implement complete EVM and concrete clients**
   - Scope：`evm/client.go`、`types.go`、`query.go`、`compute.go`、`submit.go`、`ethereum/client.go`、`bnb/client.go`。
   - Dependencies：T025。
-  - Acceptance：AC-02、AC-05、AC-12、AC-13；保留 spec 方法范围，T025 GREEN。
+  - Acceptance：AC-02、AC-05、AC-12、AC-13；实现经 Human 批准后的 spec EC-01–05/plan §3.2 契约，使新 T025 全部断言实际执行并 GREEN；当前未启动，必须先通过 T025 的 RED/固定 Auditor/Human 门禁。
   - Verification：`go test ./evm ./ethereum ./bnb`。
   - Budget：10h；约1,000生产行、0新测试行、7文件；规模预警已纳入审批。
   - Done when：两具体客户端独立通过且无统一分发。
@@ -245,4 +246,4 @@
 - [ ] 每个 Plan 的聚焦验证完成；真实数据、外部 RPC 与链上提交仅在 T036 去重执行。
 - [ ] 未经批准不提交、不推送、不合并；集成阶段只做结构检查。
 
-Human 已批准 PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1；T017–T024 已通过且证据保持有效，T025 可进入 EVM/Ethereum/BNB 测试 RED；活动清单仍为 5 Plan / 20 Task，全部 Task ID 与依赖不变。尚无真实 RPC 或交易提交授权。
+Human 已批准 PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1 与 T025；T026 可进入 GREEN/Refactor。T017–T025 的有效证据保留；活动清单仍为 5 Plan / 20 Task，全部 Task ID 与依赖不变。尚无真实 RPC 或交易提交授权。
