@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -37,9 +38,9 @@ type readerFunc func([]byte) (int, error)
 
 func (f readerFunc) Read(p []byte) (int, error) { return f(p) }
 
-type badJSON struct{}
+type badJSON struct{ cause error }
 
-func (badJSON) MarshalJSON() ([]byte, error) { return nil, errors.New("request-secret-021") }
+func (b badJSON) MarshalJSON() ([]byte, error) { return nil, b.cause }
 
 func config() httpjson.Config {
 	return httpjson.Config{Endpoint: "https://node.invalid/prefix-secret-021", Headers: http.Header{"Authorization": {"Bearer header-secret-021"}}, MaxResponseBytes: 128}
@@ -62,7 +63,7 @@ func invoke(c *httpjson.Client, raw bool, ctx context.Context, path string, req,
 	var p httpjson.Poster = c
 	return p.Post(ctx, path, req, out)
 }
-func checkError(t *testing.T, err error, kind apierror.Kind, method string, status int, sentinel error) {
+func checkError(t *testing.T, err error, kind apierror.Kind, method string, status int, cause error) {
 	t.Helper()
 	var e apierror.Error
 	if !errors.As(err, &e) {
@@ -70,21 +71,17 @@ func checkError(t *testing.T, err error, kind apierror.Kind, method string, stat
 		return
 	}
 	if e.Kind != kind || e.Method != method || e.HTTPStatus != status || e.HasRPCCode || e.RPCCode != 0 || e.NodeCode != "" || e.SubmissionUnknown {
-		t.Errorf("unexpected safe fields: %#v", e)
+		t.Errorf("unexpected classification fields: %#v", e)
 	}
-	if errors.Unwrap(err) != sentinel {
-		t.Error("cause must be exact safe sentinel or nil")
+	if errors.Unwrap(err) != cause {
+		t.Error("cause must be the exact original error or nil")
 	}
 	for _, s := range []error{context.Canceled, context.DeadlineExceeded} {
-		if errors.Is(err, s) != (s == sentinel) {
+		if errors.Is(err, s) != errors.Is(cause, s) {
 			t.Errorf("incorrect errors.Is(%v)", s)
 		}
 	}
-	for _, secret := range []string{"node.invalid", "prefix-secret-021", "header-secret-021", "request-secret-021", "response-secret-021", "transport-secret-021"} {
-		if strings.Contains(fmt.Sprintf("%#v %s", e, err), secret) {
-			t.Errorf("error retained synthetic sensitive marker %q", secret)
-		}
-	}
+
 }
 
 func TestNewRejectsInvalidConfigurationWithoutIO(t *testing.T) {
@@ -120,7 +117,15 @@ func TestNewRejectsInvalidConfigurationWithoutIO(t *testing.T) {
 				cfg.Headers["X-Test"] = []string{"x\r\nAuthorization: secret"}
 			}
 			c, err := httpjson.New(cfg, d)
-			checkError(t, err, apierror.Configuration, "", 0, nil)
+			var cause error
+			if name == "bad-escape" {
+				cause = errors.Unwrap(err)
+				var parsed *url.Error
+				if !errors.As(err, &parsed) || !errors.Is(err, url.EscapeError("%zz")) {
+					t.Error("original URL parse error chain missing")
+				}
+			}
+			checkError(t, err, apierror.Configuration, "", 0, cause)
 			if c != nil || calls != 0 {
 				t.Errorf("invalid constructor client=%v calls=%d", c != nil, calls)
 			}
@@ -205,6 +210,7 @@ func TestInvalidArgumentsAndUnsafePathsDoNoIO(t *testing.T) {
 				ctx := context.Background()
 				var result any = &out
 				var req any
+				original := errors.New("request-secret-021")
 				switch name {
 				case "nil-context":
 					ctx = nil
@@ -218,9 +224,25 @@ func TestInvalidArgumentsAndUnsafePathsDoNoIO(t *testing.T) {
 				case "unencodable":
 					req = make(chan int)
 				case "marshal-error":
-					req = badJSON{}
+					req = badJSON{cause: original}
 				}
-				checkError(t, invoke(c, raw, ctx, "wallet/probe", req, result), apierror.InvalidArgument, "wallet/probe", 0, nil)
+				err := invoke(c, raw, ctx, "wallet/probe", req, result)
+				var cause error
+				switch name {
+				case "unencodable":
+					cause = errors.Unwrap(err)
+					var unsupported *json.UnsupportedTypeError
+					if !errors.As(err, &unsupported) || unsupported.Type != reflect.TypeOf(req) {
+						t.Error("original unsupported-type marshal error missing")
+					}
+				case "marshal-error":
+					cause = errors.Unwrap(err)
+					var marshaler *json.MarshalerError
+					if !errors.As(err, &marshaler) || marshaler.Err != original || !errors.Is(err, original) {
+						t.Error("original marshal sentinel identity missing")
+					}
+				}
+				checkError(t, err, apierror.InvalidArgument, "wallet/probe", 0, cause)
 				if calls != 0 || out != 19 {
 					t.Error("invalid argument performed I/O or modified result")
 				}
@@ -262,9 +284,10 @@ func TestResponseBoundariesAndResources(t *testing.T) {
 				case "read", "transport", "response-and-error", "nil-response":
 					want = apierror.Transport
 				}
+				original := errors.New("transport-secret-021")
 				b := &trackedBody{Reader: strings.NewReader(payload)}
 				if name == "read" {
-					b.Reader = readerFunc(func([]byte) (int, error) { return 0, errors.New("transport-secret-021") })
+					b.Reader = readerFunc(func([]byte) (int, error) { return 0, original })
 				}
 				obtained := false
 				c := client(t, cfg, doerFunc(func(r *http.Request) (*http.Response, error) {
@@ -274,7 +297,7 @@ func TestResponseBoundariesAndResources(t *testing.T) {
 						t.Error("nil request must encode JSON null")
 					}
 					if name == "transport" {
-						return nil, errors.New("transport-secret-021")
+						return nil, original
 					}
 					if name == "nil-response" {
 						return nil, nil
@@ -291,7 +314,7 @@ func TestResponseBoundariesAndResources(t *testing.T) {
 					}
 					obtained = true
 					if name == "response-and-error" {
-						return resp, errors.New("transport-secret-021")
+						return resp, original
 					}
 					return resp, nil
 				}))
@@ -307,10 +330,44 @@ func TestResponseBoundariesAndResources(t *testing.T) {
 					}
 				} else {
 					wantStatus := status
-					if name == "transport" || name == "nil-response" || name == "response-and-error" {
+					if name == "transport" || name == "nil-response" {
 						wantStatus = 0
 					}
-					checkError(t, err, want, "wallet/probe", wantStatus, nil)
+					var cause error
+					if name == "read" || name == "transport" || name == "response-and-error" {
+						cause = original
+					}
+					switch name {
+					case "empty", "malformed", "trailing":
+						cause = errors.Unwrap(err)
+						var syntax *json.SyntaxError
+						if !errors.As(err, &syntax) {
+							t.Error("original JSON syntax error missing")
+						}
+					case "decode":
+						cause = errors.Unwrap(err)
+						var mismatch *json.UnmarshalTypeError
+						if !errors.As(err, &mismatch) || mismatch.Field != "s" || mismatch.Type != reflect.TypeOf("") {
+							t.Error("original JSON type error missing")
+						}
+					}
+					checkError(t, err, want, "wallet/probe", wantStatus, cause)
+					switch name {
+					case "empty", "malformed", "trailing", "decode", "over-limit":
+						var e apierror.Error
+						if errors.As(err, &e) {
+							body := payload
+							if name == "over-limit" {
+								body = body[:cfg.MaxResponseBytes]
+							}
+							if string(e.ResponseBody) != body || e.ResponseBodyTruncated != (name == "over-limit") {
+								t.Error("Protocol response body/truncation not retained")
+							}
+						}
+					}
+					if name == "response-and-error" && b.reads != 0 {
+						t.Error("failed Do response must not be read for diagnostics")
+					}
 					if out != before {
 						t.Error("failure partially modified caller result")
 					}
@@ -344,12 +401,13 @@ func TestContextSentinelsAndBodyClosure(t *testing.T) {
 						cancel()
 					}
 					calls := 0
+					original := fmt.Errorf("transport-secret-021: %w", sentinel)
 					b := &trackedBody{Reader: readerFunc(func(p []byte) (int, error) {
 						if stage == "after-read" {
 							cancel()
 							return copy(p, `{"n":7}`), io.EOF
 						}
-						return 0, fmt.Errorf("transport-secret-021: %w", sentinel)
+						return 0, original
 					})}
 					c := client(t, config(), doerFunc(func(r *http.Request) (*http.Response, error) {
 						calls++
@@ -357,22 +415,20 @@ func TestContextSentinelsAndBodyClosure(t *testing.T) {
 							t.Error("caller context not propagated")
 						}
 						if stage == "do" {
-							return &http.Response{StatusCode: 200, Body: b}, fmt.Errorf("transport-secret-021: %w", sentinel)
+							return &http.Response{StatusCode: 200, Body: b}, original
 						}
 						return &http.Response{StatusCode: 200, Body: b}, nil
 					}))
 					out := map[string]int{"unchanged": 19}
 					err := invoke(c, raw, ctx, "wallet/probe", nil, &out)
-					want, status, wantCalls := sentinel, 200, 1
-					if errors.Is(sentinel, context.Canceled) {
-						want = context.Canceled
-					}
+					want, status, wantCalls := original, 200, 1
 					if stage == "before" {
+						want = ctx.Err()
 						status = 0
 						wantCalls = 0
 					}
-					if stage == "do" {
-						status = 0
+					if stage == "do" && b.reads != 0 {
+						t.Error("failed Do response must not be read for diagnostics")
 					}
 					if stage == "after-read" {
 						want = context.Canceled
@@ -386,6 +442,124 @@ func TestContextSentinelsAndBodyClosure(t *testing.T) {
 					}
 				})
 			}
+		}
+	}
+}
+
+// All markers in these fixtures are synthetic; no real endpoint is contacted.
+func TestRawResponseBodyAndLimits(t *testing.T) {
+	for _, raw := range []bool{false, true} {
+		for _, tc := range []struct {
+			name, payload        string
+			limit                int64
+			readError, truncated bool
+		}{
+			{"non-json", "response-secret-021", 128, false, false},
+			{"exact-limit", "12345678", 8, false, false},
+			{"limit-plus-one", "123456789", 8, false, true},
+			{"partial-read", "partial", 8, true, false},
+			{"read-error-only", "", 8, true, false},
+			{"exact-limit-read-error", "12345678", 8, true, false},
+			{"probe-byte-and-error", "123456789", 8, true, true},
+		} {
+			t.Run(fmt.Sprintf("raw=%v/%s", raw, tc.name), func(t *testing.T) {
+				cfg := config()
+				cfg.MaxResponseBytes = tc.limit
+				original := fmt.Errorf("synthetic read: %w", context.Canceled)
+				b := &trackedBody{Reader: strings.NewReader(tc.payload)}
+				if tc.readError {
+					b.Reader = readerFunc(func(p []byte) (int, error) { return copy(p, tc.payload), original })
+				}
+				if tc.name == "probe-byte-and-error" {
+					first := true
+					b.Reader = readerFunc(func(p []byte) (int, error) {
+						if first {
+							first = false
+							return copy(p, tc.payload[:tc.limit]), nil
+						}
+						return copy(p, tc.payload[tc.limit:]), original
+					})
+				}
+				calls := 0
+				c := client(t, cfg, doerFunc(func(*http.Request) (*http.Response, error) {
+					calls++
+					return &http.Response{StatusCode: 503, Body: b}, nil
+				}))
+				out := "unchanged"
+				err := invoke(c, raw, context.Background(), "wallet/probe", map[string]string{"payload": "request-secret-021"}, &out)
+				kind := apierror.HTTP
+				var cause error
+				if tc.readError {
+					kind, cause = apierror.Transport, original
+				}
+				checkError(t, err, kind, "wallet/probe", 503, cause)
+				var e apierror.Error
+				if !errors.As(err, &e) {
+					t.Fatal("missing structured error")
+				}
+				want := tc.payload
+				if int64(len(want)) > tc.limit {
+					want = want[:tc.limit]
+				}
+				if string(e.ResponseBody) != want {
+					t.Error("original response bytes not retained exactly")
+				}
+				if e.ResponseBodyTruncated != tc.truncated {
+					t.Errorf("truncation=%v want %v", e.ResponseBodyTruncated, tc.truncated)
+				}
+				for _, marker := range []string{"node.invalid", "prefix-secret-021", "header-secret-021", "request-secret-021"} {
+					fields := e.Message + string(e.Data) + string(e.ResponseBody) + e.Error()
+					if e.Cause != nil {
+						fields += e.Cause.Error()
+					}
+					if strings.Contains(fields, marker) {
+						t.Errorf("SDK appended absent configuration/request marker %q", marker)
+					}
+				}
+				if calls != 1 || b.closes != 1 || b.reads > int(tc.limit)+1 || out != "unchanged" {
+					t.Error("request count, close, bounded read or result ownership violated")
+				}
+			})
+		}
+	}
+}
+
+type dependencyError struct{ message string }
+
+func (e dependencyError) Error() string { return e.message }
+
+func TestOriginalTypedCauseDespiteCanceledContext(t *testing.T) {
+	for _, raw := range []bool{false, true} {
+		for _, stage := range []string{"do", "read"} {
+			t.Run(fmt.Sprintf("raw=%v/%s", raw, stage), func(t *testing.T) {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				original := fmt.Errorf("synthetic wrapper: %w", dependencyError{"transport-secret-021"})
+				calls := 0
+				b := &trackedBody{Reader: readerFunc(func([]byte) (int, error) { cancel(); return 0, original })}
+				c := client(t, config(), doerFunc(func(*http.Request) (*http.Response, error) {
+					calls++
+					if stage == "do" {
+						cancel()
+						return &http.Response{StatusCode: 200, Body: b}, original
+					}
+					return &http.Response{StatusCode: 200, Body: b}, nil
+				}))
+				out := 19
+				err := invoke(c, raw, ctx, "wallet/probe", nil, &out)
+				status := 200
+				if stage == "do" && b.reads != 0 {
+					t.Error("failed Do response must not be read for diagnostics")
+				}
+				checkError(t, err, apierror.Transport, "wallet/probe", status, original)
+				var typed dependencyError
+				if !errors.Is(err, original) || !errors.As(err, &typed) || typed.message != "transport-secret-021" {
+					t.Error("original typed dependency error is not reachable")
+				}
+				if calls != 1 || b.closes != 1 || out != 19 {
+					t.Error("request count, body closure or result ownership violated")
+				}
+			})
 		}
 	}
 }
