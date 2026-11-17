@@ -84,6 +84,7 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	}
 	encoded, err := json.Marshal(params)
 	if err != nil {
+		e.Cause = err
 		return e
 	}
 	e.Kind = apierror.Transport
@@ -94,11 +95,13 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	payload, err := json.Marshal(request{Version: c.cfg.Version.ToString(), ID: id, Method: method, Params: encoded})
 	if err != nil {
 		e.Kind = apierror.InvalidArgument
+		e.Cause = err
 		return e
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.cfg.Endpoint, bytes.NewReader(payload))
 	if err != nil {
 		e.Kind = apierror.Configuration
+		e.Cause = err
 		return e
 	}
 	req.Header = c.cfg.Headers.Clone()
@@ -107,16 +110,19 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.doer.Do(req)
-	if resp != nil && !isNil(resp.Body) {
-		defer resp.Body.Close()
+	if resp != nil {
+		e.HTTPStatus = resp.StatusCode
+		if !isNil(resp.Body) {
+			defer resp.Body.Close()
+		}
 	}
 	if err != nil {
-		return transportError(e, ctx, err)
+		e.Cause = err
+		return e
 	}
 	if resp == nil {
 		return e
 	}
-	e.HTTPStatus = resp.StatusCode
 	e.Kind = apierror.Protocol
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		e.Kind = apierror.HTTP
@@ -126,15 +132,19 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	}
 	// Read at most the limit plus one byte, without overflowing an int64 limit.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, c.cfg.MaxResponseBytes))
+	e.ResponseBody = body
 	if err != nil {
 		e.Kind = apierror.Transport
-		return transportError(e, ctx, err)
+		e.Cause = err
+		return e
 	}
 	if int64(len(body)) == c.cfg.MaxResponseBytes {
 		extra, readErr := io.ReadAll(io.LimitReader(resp.Body, 1))
+		e.ResponseBodyTruncated = len(extra) != 0
 		if readErr != nil {
 			e.Kind = apierror.Transport
-			return transportError(e, ctx, readErr)
+			e.Cause = readErr
+			return e
 		}
 		if len(extra) != 0 {
 			return e
@@ -144,14 +154,17 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 		e.Kind = apierror.Transport
 		return e.WithContextCause(err)
 	}
-	decoded, code, hasCode, valid := parseResponse(body, c.cfg.Version, id)
+	decoded, nodeError, valid := parseResponse(body, c.cfg.Version, id)
+	e.Cause = nodeError.Cause
 	if !valid {
 		return e
 	}
-	if hasCode {
+	if nodeError.HasRPCCode {
 		e.Kind = apierror.RPC
-		e.RPCCode = code
+		e.RPCCode = nodeError.RPCCode
 		e.HasRPCCode = true
+		e.Message = nodeError.Message
+		e.Data = nodeError.Data
 		return e
 	}
 	if e.Kind == apierror.HTTP {
@@ -159,18 +172,11 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	}
 	temporary := reflect.New(rv.Elem().Type())
 	if err := json.Unmarshal(decoded, temporary.Interface()); err != nil {
+		e.Cause = err
 		return e
 	}
 	rv.Elem().Set(temporary.Elem())
 	return nil
-}
-
-func transportError(e apierror.Error, ctx context.Context, err error) apierror.Error {
-	normalized := e.WithContextCause(err)
-	if normalized.Unwrap() != nil {
-		return normalized
-	}
-	return e.WithContextCause(ctx.Err())
 }
 
 func isNil(v any) bool {

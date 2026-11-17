@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+
+	"github.com/Stone-afk/chain-api-go/apierror"
 )
 
 type request struct {
@@ -13,83 +15,106 @@ type request struct {
 	Params  json.RawMessage `json:"params"`
 }
 
-// parseResponse retains only the result or a validated numeric node code.
+// parseResponse retains the result or validated raw node error fields.
 // Field presence is distinct from JSON null in both supported dialects.
-func parseResponse(body []byte, version Version, id uint64) (json.RawMessage, int, bool, bool) {
-	fields, valid := parseObject(body)
+func parseResponse(body []byte, version Version, id uint64) (json.RawMessage, apierror.Error, bool) {
+	fields, valid, err := parseObject(body)
 	if !valid {
-		return nil, 0, false, false
+		return nil, apierror.Error{Cause: err}, false
 	}
 	var responseID uint64
-	if raw := fields["id"]; len(raw) == 0 || isNull(raw) || json.Unmarshal(raw, &responseID) != nil || responseID != id {
-		return nil, 0, false, false
+	raw := fields["id"]
+	if len(raw) == 0 || isNull(raw) {
+		return nil, apierror.Error{}, false
+	}
+	if err := json.Unmarshal(raw, &responseID); err != nil {
+		return nil, apierror.Error{Cause: err}, false
+	}
+	if responseID != id {
+		return nil, apierror.Error{}, false
 	}
 	result, hasResult := fields["result"]
 	rpcError, hasError := fields["error"]
 	if version == V2 {
 		var wireVersion string
-		if json.Unmarshal(fields["jsonrpc"], &wireVersion) != nil || wireVersion != V2.ToString() || hasResult == hasError {
-			return nil, 0, false, false
+		if err := json.Unmarshal(fields["jsonrpc"], &wireVersion); err != nil {
+			return nil, apierror.Error{Cause: err}, false
+		}
+		if wireVersion != V2.ToString() || hasResult == hasError {
+			return nil, apierror.Error{}, false
 		}
 	} else {
 		if !hasResult || !hasError {
-			return nil, 0, false, false
+			return nil, apierror.Error{}, false
 		}
 		if isNull(rpcError) {
-			return result, 0, false, true
+			return result, apierror.Error{}, true
 		}
 		if !isNull(result) {
-			return nil, 0, false, false
+			return nil, apierror.Error{}, false
 		}
 	}
 	if !hasError {
-		return result, 0, false, true
+		return result, apierror.Error{}, true
 	}
-	details, valid := parseObject(rpcError)
+	details, valid, err := parseObject(rpcError)
 	if !valid {
-		return nil, 0, false, false
+		return nil, apierror.Error{Cause: err}, false
 	}
 	var code int
 	var message string
-	if len(details["code"]) == 0 || isNull(details["code"]) || json.Unmarshal(details["code"], &code) != nil || len(details["message"]) == 0 || isNull(details["message"]) || json.Unmarshal(details["message"], &message) != nil {
-		return nil, 0, false, false
+	if len(details["code"]) == 0 || isNull(details["code"]) || len(details["message"]) == 0 || isNull(details["message"]) {
+		return nil, apierror.Error{}, false
 	}
-	return nil, code, true, true
+	if err := json.Unmarshal(details["code"], &code); err != nil {
+		return nil, apierror.Error{Cause: err}, false
+	}
+	if err := json.Unmarshal(details["message"], &message); err != nil {
+		return nil, apierror.Error{Cause: err}, false
+	}
+	return nil, apierror.Error{RPCCode: code, HasRPCCode: true, Message: message, Data: details["data"]}, true
 }
 
 func isNull(raw json.RawMessage) bool { return bytes.Equal(bytes.TrimSpace(raw), []byte("null")) }
 
 // parseObject rejects ambiguous members instead of silently keeping the last.
-func parseObject(raw []byte) (map[string]json.RawMessage, bool) {
+func parseObject(raw []byte) (map[string]json.RawMessage, bool, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	token, err := decoder.Token()
-	if err != nil || token != json.Delim('{') {
-		return nil, false
+	if err != nil {
+		return nil, false, err
+	}
+	if token != json.Delim('{') {
+		return nil, false, nil
 	}
 	fields := make(map[string]json.RawMessage)
 	for decoder.More() {
 		token, err := decoder.Token()
 		if err != nil {
-			return nil, false
+			return nil, false, err
 		}
 		name, ok := token.(string)
 		if !ok {
-			return nil, false
+			return nil, false, nil
 		}
 		if _, exists := fields[name]; exists {
-			return nil, false
+			return nil, false, nil
 		}
 		var value json.RawMessage
-		if decoder.Decode(&value) != nil {
-			return nil, false
+		if err := decoder.Decode(&value); err != nil {
+			return nil, false, err
 		}
 		fields[name] = value
 	}
-	if token, err := decoder.Token(); err != nil || token != json.Delim('}') {
-		return nil, false
+	token, err = decoder.Token()
+	if err != nil {
+		return nil, false, err
+	}
+	if token != json.Delim('}') {
+		return nil, false, nil
 	}
 	if _, err := decoder.Token(); err != io.EOF {
-		return nil, false
+		return nil, false, err
 	}
-	return fields, true
+	return fields, true, nil
 }
