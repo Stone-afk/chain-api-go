@@ -3,14 +3,17 @@
 **规格文档 / Spec**：[spec.md](spec.md)  
 **技术方案 / Plan**：[plan.md](plan.md)  
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
-**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1
-**日期 / Date**：2026-11-16  
-**状态 / Status**：已批准；T026 已通过，T027 可启动（Approved; T026 Passed / T027 May Start）
+**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1+BITCOIN-CONTRACT-v1+EVM-RAW-DTO-v1+RAW-ERROR-v1
+**日期 / Date**：2026-11-17
+**状态 / Status**：T017/T018 已通过 RED、Auditor 与 Human 门禁并获准集成；T019 及以后任务未授权（T017/T018 Complete）
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
+| RAW-ERROR-v1 | 2026-11-17 | Human 已批准：恢复原始节点 Message/Data、HTTP 错误正文及底层 Cause；区分 SDK 返回与 live 脱敏输出。重开 T017–T022，修订 T025/T026；T025 当前 RED/审核不能作为新基线门禁。T023/T024 未受影响证据保留，SDK→harness 输出隔离在 T033/T034 验证。保持 5 Plan / 20 Task、T017–T036 ID 与原路径；T027 继续暂停。constitution 1.3 同时获批；T017/T018 已完成门禁并获准集成，T019 未授权。 |
+| EVM-RAW-DTO-v1 | 2026-11-17 | Human 已批准：将 EVM 收敛为原始 RPC DTO + 必要转换，接受破坏性 API 变更且不提供兼容层；重开 T025/T026，旧证据 stale。T025 可进入 RED，T026 仍等待审核和 Human 门禁；Bitcoin 候选暂停。保持 5 Plan / 20 Task、路径和依赖，不改 constitution。 |
+| BITCOIN-CONTRACT-v1 | 2026-11-17 | 候选：补齐 PLAN-003 十方法、DTO、金额/费率、历史和 wire 契约；T027 暂停待批准。只改三件套；保持 5 Plan / 20 Task、全部依赖、T027 七路径、T028 五路径和 T017–T026 有效证据。 |
 | EVM-CONTRACT-v1 | 2026-11-16 | Human 已批准：新增最小 `evm.New` seam，冻结首版 EVM DTO 与 EC-01–05 的精确验收；修订 T025 的声明预算及 20/20/30 分钟时箱。仅影响 PLAN-002 契约；T025 可恢复、T026 未启动，既有 5 Plan / 20 Task 和 T017–T024 不变。 |
 | HARNESS-CONTRACT-v1 | 2026-11-16 | Human 已批准：冻结 test-only live harness 的显式配置、raw-byte SHA-256、可取消并发等待、总 deadline context、结果优先级与离线并发验证；只重开 T023/T024，保持 5 Plan / 20 Task、任务 ID 与依赖不变。T017–T022 的未受影响证据保持有效。 |
 | CONTEXT-CAUSE-v1 | 2026-11-16 | Human 批准安全的跨包 context cause 值方法；重新执行 T017 RED、T018 GREEN 及固定 Auditor 门禁，不增加 Task。 |
@@ -48,7 +51,7 @@ flowchart LR
 
 ```text
 transport/                 # HTTPDoer 接口
-apierror/                  # 安全结构化错误
+apierror/                  # 保留原始信息的结构化错误
 jsonrpc/                   # JSON-RPC 2.0 / Bitcoin 方言
 httpjson/                  # Tron 同 endpoint HTTP JSON
 evm/                       # Ethereum/BNB 共用原生类型与方法
@@ -91,10 +94,10 @@ tron.New(tron.Config, httpjson.Poster) (*tron.Client, error)
 规则：
 
 - 构造函数复制可变配置并拒绝 nil/typed-nil；只做本地校验。
-- `context.Context` 是每个 I/O 方法首参；nil context 直接拒绝。
-- 金额使用整数、`big.Int` 或精确十进制类型，禁止 `float64` 承载金额。
+- `context.Context` 是每个 I/O 方法首参；调用方必须提供有效 context，公共协议层负责验证与取消。EVM 不重复该检查。
+- 金额不使用浮点；EVM 原始 DTO 保留原生 hex string，必要标量转换使用整数或 `big.Int`。
 - nullable 字段必须保留协议语义，不得把缺失解释为零。
-- RawCall/RawPost 复用同一安全、限长、context 和错误规则。
+- RawCall/RawPost 复用同一限长、context 和原始错误保留规则。
 - 命名常量类型按底层类型提供 `ToString()`、`ToInt()`、`ToInt32()`、`ToInt64()` 等明确转换方法，不提供含糊的通用 `Value()`。
 - 小字段、小结构体及其参数、返回值、构造器传参默认使用值语义。仅 `Client` 等包含大量方法或持有大量依赖并负责复杂生命周期的实现对象允许使用指针。
 - 指针规则不授权批量重写既有指针。数据库 `NULL` 或第三方 API 契约需要指针时，记录准确冲突并等待用户决定。
@@ -103,29 +106,6 @@ tron.New(tron.Config, httpjson.Poster) (*tron.Client, error)
 ### 3.1 值语义接口裁决 / Value-Semantics API Decisions
 
 ```go
-type CallRequest struct {
-    From                       Address
-    HasFrom                    bool
-    To                         Address
-    HasTo                      bool
-    Gas                        uint64
-    HasGas                     bool
-    Value                      big.Int
-    HasValue                   bool
-    GasPrice                   big.Int
-    HasGasPrice                bool
-    MaxFeePerGas               big.Int
-    HasMaxFeePerGas            bool
-    MaxPriorityFeePerGas       big.Int
-    HasMaxPriorityFeePerGas    bool
-    Data                       Data
-}
-
-// evm
-func (c *Client) ChainID(ctx context.Context) (big.Int, error)
-func (c *Client) GetBalance(ctx context.Context, address Address, at BlockRef) (big.Int, error)
-func (c *Client) GetTransactionReceipt(ctx context.Context, hash Hash) (Receipt, bool, error)
-
 // bitcoin
 func (c *Client) GetTxOut(ctx context.Context, req GetTxOutRequest) (TxOut, bool, error)
 func (c *Client) EstimateSmartFee(ctx context.Context, req EstimateSmartFeeRequest) (FeeEstimate, bool, error)
@@ -140,85 +120,239 @@ func (c *Client) BroadcastTransaction(ctx context.Context, payload TransactionPa
 func (c *Client) GetTransactionInfoByID(ctx context.Context, id TxID) (TransactionInfo, bool, error)
 ```
 
-可选请求字段按 Has 标记决定是否编码；非负性、费用互斥等校验仅在对应字段提供时执行。SDK 不修改调用方的 `big.Int`。需要保存或复制包含 `big.Int` 的请求/配置时逐字段深拷贝数值；返回的大整数不得与 SDK 内部可变状态共享存储。本设计不引入统一 Optional 抽象。
+EVM 的请求、DTO 和必要数值转换以 §3.2 为准。其他链继续使用已批准的值语义与存在性契约；本修订不迁移其他链、不引入统一 Optional。
 
 上述 nullable 签名的第二个返回值统一表示 `present`。合法空结果为 `(零值,false,nil)`，有效结果为 `(值,true,nil)`，错误为 `(零值,false,error)`。成功时协议要求必有结果的方法必须返回 true，不能因增加 bool 而放宽必需字段或响应合法性。
 
+Bitcoin `EstimateSmartFee` 除外：其 bool 表示 `hasEstimate`；收到无估值结果时保留节点 Blocks/Errors 并返回 false，见 §3.3 BC-03。
+
 具体链与协议 `*Client` 保持指针构造器和方法接收者，因为这些对象包含大量方法并持有通信依赖。`HTTPDoer.Do(*http.Request) (*http.Response,error)` 仅因兼容标准库 `http.Client.Do` 契约而保留，是本次要求 Human 明确批准的唯一标准库指针签名；不授权其他 SDK DTO 使用指针。
 
-### 3.2 EVM-CONTRACT-v1 首版契约 / First-Release Contract
+### 3.2 EVM-RAW-DTO-v1 首版契约 / First-Release Contract
 
-本节为 Human 已批准的 PLAN-002 局部修订，追踪 spec EC-01–05/AC-02/05/12/13；不新增 RPC 方法、Plan、Task、路径或依赖。当前快照 `01b24c2039ea0fbf2e2ea5d76ee4b557dd0e8992` 加 T025 十个未提交文件中，`evm.Client.rpc` 私有且无公开构造器；DTO 只含少量字段，测试多数只断言存在性/长度。此为已观察事实，不能视为已实现能力。
+**依据与选择。** 2026-11-17 只读观察：当前 HEAD 为 `d3502b8c151de849bfc545656ce2dd81d87d1e86`，另有未提交 `evm/client.go`；`types.go`/`query.go` 合计 632 行。参考 `/Users/stone/cndt/chain-scanner-core-go/rpc/evm/{types,client,hex}.go` 合计 216 行，但只覆盖四方法，不能直接作为本 SDK 行数目标。只借鉴原始字段与按需转换，不复制配置、logger、默认客户端、重试或 dispatcher。
 
-**依据与选择 / Evidence and choice.** constitution 3/4/8、spec §4.1 和 architecture §7.2/7.4/12.4 要求注入、原生查询与值语义。2026-11-16 查阅 [Ethereum JSON-RPC](https://ethereum.org/developers/docs/apis/json-rpc/)（Quantity/Data、区块/交易字段及 pending null）、[execution-apis receipt schema](https://raw.githubusercontent.com/ethereum/execution-apis/main/src/schemas/receipt.yaml)（回执状态/root、费用和日志）及 [fee history schema](https://raw.githubusercontent.com/ethereum/execution-apis/main/src/eth/fee_market.yaml)（较短返回范围、费用数组和百分位）；均为官方来源，可信度高，访问内容不是新增 SDK 方法授权。本节选择的首版字段子集和兼容性规则是本项目候选决策；未列扩展字段按 architecture §7.4 忽略，完整原始内容可通过既有 RawCall 获得。
+| 方案 | 复杂度/性能/扩展性 | 兼容性/风险/维护 | 决定 |
+|---|---|---|---|
+| 保留强类型领域模型 | 立即转换全部字段，解析分支多，新字段需扩展解析器；无已测性能优势 | API 变化较少，但继续维护 Has、所有权与 schema 分支 | 拒绝 |
+| 原始 RPC DTO + 必要转换 | 标准解码，业务需要时转换；新增字段只增加 DTO 字段 | 有公开 API 破坏；减少解析维护，调用方负责 DTO 数值解释 | Human 已选 |
+| 完整复刻 scanner 客户端 | 当前四方法实现较小，但扩至 14 方法仍需设计 | 配置/路由/指针/默认行为不符合本 SDK 边界 | 拒绝 |
 
-选择单个 `evm.New` 函数，保持私有 Caller 和直接具体链客户端；相比公开可写 rpc 字段，避免绕过依赖校验；相比迁移到 internal 或新增工厂接口，无新增包/接口和路径成本。返回复杂 Client 指针符合既有裁决。无需 PoC 或 benchmark；跨包编译、构造零调用与后续一次调用由 T025 原路径内测试证明，行为实现仍归 T026。
+[官方 JSON-RPC 文档](https://ethereum.org/developers/docs/apis/json-rpc/)支持 Quantity/Data、pending 与合约创建 null 语义；[Go encoding/json](https://pkg.go.dev/encoding/json)定义标准解码、RawMessage、未知字段和重复键行为。访问日期 2026-11-17；公开 Go 形状及校验范围是本项目候选决定。无需新增 PoC、依赖或 benchmark，T025 的离线 fixture 提供可行性证据。
 
-#### EC-01：构造及方法 / Construction and methods
+#### ER-01：公开 API
 
-- `func New(rpc jsonrpc.Caller) (*Client, error)` 位于 `evm/client.go`；nil/typed-nil 返回 `(nil, Configuration)`，有效依赖返回可用 Client，构造不调用 Caller。不得公开 rpc 字段、setter、注册表或工厂接口。
-- `ethereum.New(Config, jsonrpc.Caller)` 与 `bnb.New(Config, jsonrpc.Caller)` 调用该 seam 并内嵌 `*evm.Client`；各自 `Config{ExpectedChainID big.Int}` 要求正数并深拷贝。`ValidateNetwork(context.Context) error` 单次读取 ChainID 并比较；不在构造或每次业务调用中自动验证。1 与 56 只是两链独立测试样例，其他正 ChainID 可配置。
-- `Address [20]byte`、`Hash [32]byte`、`Data []byte`，以及 `ParseAddress/ParseHash/ParseData(string)`、各自 `MarshalJSON() ([]byte,error)` 保持当前声明；BlockRef 私有状态只通过 `Latest()`、`Pending()`、`AtNumber(uint64)` 构造，提供 `MarshalJSON() ([]byte,error)`；零值 BlockRef 无效，进入 RPC 前返回 InvalidArgument。
-- `CallRequest` 精确字段沿用 §3.1。`LogFilter` 为 `FromBlock, ToBlock BlockRef; Addresses []Address; Topics [][]Hash`；地址为空省略 address，非空编码数组；Topics 外层顺序保留，nil/空内层编码 null 通配位，非空内层编码 hash OR 数组；最多四个位置，超限本地拒绝。不新增 blockHash 过滤、tag 或完整交易区块模式。
+`Address`、`Hash`、`Data` 保留名称，仅作为原始 wire 字符串，不再是校验后的领域对象。此最小命名保留 constitution 8.1；DTO 内字段使用基础类型。删除 `ParseAddress`/`ParseHash`/`ParseData` 及三个类型的 `MarshalJSON`；不保留兼容层。
 
-以下均是 `*evm.Client` 方法，`ctx context.Context` 为首参；所有方法拒绝 nil context。Nullable 三态只适用于标注的三个方法。
+```go
+type Address string
+type Hash string
+type Data string
+func (v Address) ToString() string
+func (v Hash) ToString() string
+func (v Data) ToString() string
 
-| Go 方法 / Method | 精确参数与返回（省略 ctx） / Signature excluding ctx | RPC / 参数 |
-|---|---|---|
-| ChainID / BlockNumber | `() (big.Int,error)` / `() (uint64,error)` | `eth_chainId` / `eth_blockNumber`；`[]` |
-| GetBlock | `(BlockRef) (Block,bool,error)` | `eth_getBlockByNumber`；`[at,false]` |
-| GetBalance / GetTransactionCount / GetCode | `(Address,BlockRef) (big.Int,error)` / `(uint64,error)` / `(Data,error)` | `eth_getBalance` / `eth_getTransactionCount` / `eth_getCode`；`[address,at]` |
-| GetTransaction / GetTransactionReceipt | `(Hash) (Transaction,bool,error)` / `(Receipt,bool,error)` | `eth_getTransactionByHash` / `eth_getTransactionReceipt`；`[hash]` |
-| GetLogs | `(LogFilter) ([]Log,error)` | `eth_getLogs`；`[filter]` |
-| Call / EstimateGas | `(CallRequest,BlockRef) (Data,error)` / `(CallRequest) (uint64,error)` | `eth_call`；`[request,at]` / `eth_estimateGas`；`[request]` |
-| GasPrice / FeeHistory | `() (big.Int,error)` / `(uint64,BlockRef,[]float64) (FeeHistoryResult,error)` | `eth_gasPrice`；`[]` / `eth_feeHistory`；`[count,newest,percentiles]` |
-| SendRawTransaction | `(Data) (Hash,error)` | `eth_sendRawTransaction`；`[payload]`，空载荷本地拒绝 |
+func Latest() BlockRef
+func Pending() BlockRef
+func AtNumber(uint64) BlockRef
+func (v BlockRef) MarshalJSON() ([]byte, error)
 
-#### EC-02：精确字段与存在性 / Exact fields and presence
+func New(jsonrpc.Caller) (*Client, error)
+func (c *Client) ChainID(context.Context) (big.Int, error)
+func (c *Client) BlockNumber(context.Context) (uint64, error)
+func (c *Client) GetBlock(context.Context, BlockRef) (Block, bool, error)
+func (c *Client) GetBalance(context.Context, Address, BlockRef) (big.Int, error)
+func (c *Client) GetTransactionCount(context.Context, Address, BlockRef) (uint64, error)
+func (c *Client) GetCode(context.Context, Address, BlockRef) (Data, error)
+func (c *Client) GetTransaction(context.Context, Hash) (Transaction, bool, error)
+func (c *Client) GetTransactionReceipt(context.Context, Hash) (Receipt, bool, error)
+func (c *Client) GetLogs(context.Context, LogFilter) ([]Log, error)
+func (c *Client) Call(context.Context, CallRequest, BlockRef) (Data, error)
+func (c *Client) EstimateGas(context.Context, CallRequest) (uint64, error)
+func (c *Client) GasPrice(context.Context) (big.Int, error)
+func (c *Client) FeeHistory(context.Context, uint64, BlockRef, []float64) (FeeHistoryResult, error)
+func (c *Client) SendRawTransaction(context.Context, Data) (Hash, error)
+```
 
-下表每行是完整字段集合的一部分；同一 DTO 各行合起来是其首版全部公开字段。分号分隔 Go 字段声明，逗号只组合相同类型字段。所有字段为值，不引入通用 Optional。wire 名称采用对应 JSON-RPC lowerCamelCase（`Input`→`input`、`Transactions`→`transactions`）。Has 字段不来自 wire；表示对应值存在，缺省时值必须为零。未标可选/nullable 的 wire 字段必需、非 null、类型正确；缺失与合法零不能混淆。
+RPC 方法和位置参数保持当前映射。`ethereum`/`bnb` 各自保留 `Config{ExpectedChainID big.Int}`、`New(Config,jsonrpc.Caller)`、内嵌 `*evm.Client` 及 `ValidateNetwork`。ExpectedChainID 必须正数且构造时深拷贝；ValidateNetwork 只调用一次 ChainID，不自动执行。1/56 只是测试样例，不是网络白名单。
 
-| DTO | 精确 Go 字段 / Fields | Wire 规则 / Rule |
-|---|---|---|
-| Block | `Number uint64; HasNumber bool; Hash Hash; HasHash bool` | number/hash 键必需，pending 可为 null；二者同时存在或同时 null，null 仅限 Pending 查询；顶层 null 则 present=false。 |
-| Block | `ParentHash Hash; Timestamp, GasLimit, GasUsed uint64; Transactions []Hash` | 全部必需；只返回交易 hash 数组，允许空数组，不接受对象数组或 null。 |
-| Block | `BaseFeePerGas big.Int; HasBaseFeePerGas bool` | 可缺失（升级前/不支持的网络）；提供时非 null、非负 Quantity，显式零 Has=true。 |
-| Transaction | `Hash Hash; From Address; Nonce, Gas uint64; Value big.Int; Input Data` | 全部必需；完整保留 input 与超过 uint64 的 value。 |
-| Transaction | `To Address; HasTo bool; BlockHash Hash; HasBlockHash bool; BlockNumber, TransactionIndex uint64; HasBlockNumber, HasTransactionIndex bool` | to 键必需，null 表示合约创建；三个 inclusion 键必需，pending 时全部 null，否则全部为值。 |
-| Transaction | `GasPrice, MaxFeePerGas, MaxPriorityFeePerGas, ChainID big.Int; HasGasPrice, HasMaxFeePerGas, HasMaxPriorityFeePerGas, HasChainID bool; Type uint64; HasType bool` | 五个数值字段各自可缺失，提供时非 null、合法 Quantity；其中金额均非负。gasPrice 与动态费用响应可同时存在，不套用请求互斥。Type/ChainID 不强制旧节点提供，不推断缺省值。 |
-| Receipt | `TransactionHash, BlockHash Hash; TransactionIndex, BlockNumber uint64; From Address; To, ContractAddress Address; HasTo, HasContractAddress bool` | 全部 wire 键必需；仅 to/contractAddress 可 null，分别表示创建/未创建合约。回执本身顶层 null 表示尚无回执，非空回执的区块/交易关联不可 null。 |
-| Receipt | `CumulativeGasUsed, GasUsed uint64; Logs []Log; LogsBloom [256]byte` | 全部必需；logs 可空数组但不可 null；bloom 为恰好 256 字节 Data。 |
-| Receipt | `Status uint64; HasStatus bool; Root Hash; HasRoot bool; EffectiveGasPrice big.Int; HasEffectiveGasPrice bool; Type uint64; HasType bool` | status/root 恰有一个存在且非 null；status 仅 0/1，root 保留历史回执。effectiveGasPrice/type 可缺失以兼容旧响应，提供即非 null 且校验；不存在时不合成零费率或执行结果。 |
-| Log | `Address Address; Topics []Hash; Data Data; Removed bool` | address/topics/data 必需非 null；topics 可空且最多四项；removed 可缺失（按 false），提供必须为 boolean，null 非法。 |
-| Log | `BlockHash, TransactionHash Hash; HasBlockHash, HasTransactionHash bool; BlockNumber, TransactionIndex, LogIndex uint64; HasBlockNumber, HasTransactionIndex, HasLogIndex bool` | 五个 wire 键必需，pending 日志各自可 null，零索引 Has=true；Receipt.Logs 必须全部为值。保留 Removed=true，不等同于执行失败。 |
-| FeeHistoryResult | `OldestBlock uint64; BaseFeePerGas []big.Int; GasUsedRatio []float64; Reward [][]big.Int; HasReward bool` | oldestBlock/baseFeePerGas/gasUsedRatio 必需非 null；reward 可缺失（Has=false），提供时必须为非 null 数组。所有金额为非负 Quantity，float 仅表示比例。 |
+#### ER-02：完整 DTO 字段
 
-注：Transaction 的可选数值字段为 GasPrice、MaxFeePerGas、MaxPriorityFeePerGas、ChainID、Type 五对。未列区块头扩展、accessList、签名、blob、withdrawal 等字段不进入本版 DTO；不影响既定查询方法、交易身份/关联、执行和费用基础验收，不授权交易构造或签名。
-
-#### EC-03/04：所有权与校验 / Ownership and validation
-
-- 不用浅拷贝 `big.Int` 保存配置或结果。输入的 Value/GasPrice/MaxFeePerGas/MaxPriorityFeePerGas 与 Data 在 Call/EstimateGas 后保持不变；Has=false 忽略对应值，Has=true 保留零并验证非负。切片/maps 不被修改，调用方在同步调用结束前不并发修改输入。
-- ChainID、Balance、GasPrice、Transaction 的金额、Block.BaseFeePerGas、Receipt.EffectiveGasPrice、FeeHistory 每个 base/reward 元素均独立拥有存储；不能与 fake 提供数据、其他字段或后续结果别名。配置的 ExpectedChainID 同样与调用方隔离；不要求 Go 对调用方自己复制 DTO 后的浅拷贝自动提供写时复制。
-- Quantity 必须 `0x` 前缀、至少一位 hex、无前导零（零仅 `0x0`）；uint64 字段检查溢出，big.Int 不截断至 uint64。Data 必须 `0x` 加偶数 hex 位；地址/hash/bloom 检查 20/32/256 字节；接受大小写 hex 数字，输出小写。空 Data 编码 `0x`。未知字段可忽略，已声明字段无效不得忽略。
-- 只允许 GetBlock/GetTransaction/GetTransactionReceipt 顶层 null 成功；其他方法的 null、坏 Quantity/Data、DTO 类型错误、缺必需字段及数组坏元素返回安全 Protocol；错误返回零结果（nullable 同时 false），不能返回半解析 DTO。明确 Caller RPC 错误保留安全分类/code。提交响应无效仍按 §4 标记 unknown。
-- FeeHistory：count>0；percentiles 有限、0–100 且非递减，重复值允许；nil 输入编码 `[]`，NaN/+Inf/-Inf 在 Caller 前 InvalidArgument。令 n=len(gasUsedRatio)：`1<=n<=count`，baseFeePerGas 长度 n+1；比例有限且在 [0,1]。非空 percentiles 要求 reward 存在且 n 行、每行恰好 percentile 数量；空 percentiles 可无 reward、空 reward 或 n 个空行。允许 n<count，不假定节点必须返回完整请求范围。
-
-#### EC-01–05：测试风险映射与执行 / Risk mapping and execution
-
-| 独立风险 / Risk | T025 最小证据 / Minimal evidence |
+| DTO | 精确 Go 字段 |
 |---|---|
-| 跨包 Client 无法正确装配 | 公开 New 的 nil/typed-nil/零调用；Ethereum 与 BNB 外部可见构造及全部 14 个方法接线，各自检查方法/调用次数及返回；可在现有 client_test.go 改为外部测试包，不新增路径。 |
-| DTO 丢字段或混淆 null/零 | EVM 各 DTO 一个非零、互异值完整正例，逐字段等值；独立 pending/create、已确认、合法零、历史 root/status=0、removed 日志。删除某个必需键应失败，不能仅以 `{}` 代表所有遗漏风险。nullable 三态维持。 |
-| 嵌套 wire 未验证 | 表格修改完整正例：缺键/null、短 hash/address、坏 topic、奇数 Data、非规范 Quantity、uint64 溢出、错误数组/元素、fee 长度/比例；覆盖各 DTO 自有解码边界，避免每字段复制全套相同编码测试。 |
-| 大整数存储共享 | >uint64 的不同值测试 Call/EstimateGas 四个输入金额、两链 Config 变更、所有返回金额路径；使用原位 SetBit 等可复用存储的修改验证其他值/后续结果不变；FeeHistory 检查 base 与 reward 嵌套元素交叉污染。 |
-| 费用非法浮点及形状 | percentiles 的 NaN/±Inf、越界/乱序零调用；完整响应、较短合法响应、reward 缺失/形状错、ratio 越界/溢出和 null/坏金额各有断言。 |
-| 默认值掩盖提交错误/两链身份混用 | shared EVM 和两具体客户端提交均使用已知非零 hash 并逐字节断言；两链身份样例分别 1/56、交叉 mismatch，配置隔离与 unknown/拒绝测试保留。 |
+| CallRequest | `From, To, Gas, Value, GasPrice, MaxFeePerGas, MaxPriorityFeePerGas, Data string` |
+| LogFilter | `FromBlock, ToBlock BlockRef; Addresses []string; Topics [][]string` |
+| Block | `Number, Hash, BaseFeePerGas json.RawMessage; ParentHash, Timestamp, GasLimit, GasUsed string; Transactions []string` |
+| Transaction | `Hash, From, Nonce, Gas, Value, Input string` |
+| Transaction | `To, BlockHash, BlockNumber, TransactionIndex, GasPrice, MaxFeePerGas, MaxPriorityFeePerGas, ChainID, Type json.RawMessage` |
+| Receipt | `TransactionHash, BlockHash, TransactionIndex, BlockNumber, From, CumulativeGasUsed, GasUsed, LogsBloom string; Logs []Log` |
+| Receipt | `To, ContractAddress, Status, Root, EffectiveGasPrice, Type json.RawMessage` |
+| Log | `Address, Data string; Topics []string` |
+| Log | `BlockHash, TransactionHash, BlockNumber, TransactionIndex, LogIndex, Removed json.RawMessage` |
+| FeeHistoryResult | `OldestBlock string; BaseFeePerGas []string; GasUsedRatio []float64; Reward json.RawMessage` |
 
-六测试文件优先用表格、紧凑 fixture 与局部 helper 去重；字段/编码深测只在 evm，具体链测试证明各自装配和全部方法可达，不复制整套 DTO 负例。不新增测试工具包、不引入反射驱动生产解析、通用 Optional 或框架。T025 只补测试和完整声明，New/方法保留 Unsupported；编译后目标断言 RED 为本阶段证据，构造失败遮蔽的细部断言需在 T026 GREEN 全部实际运行。单次聚焦 `go test ./evm ./ethereum ./bnb`，受影响失败修复可重跑；不跑 live 或无关已绿套件。
+CallRequest 字段全部 `omitempty`：`""` 表示省略，`"0x0"` 表示显式数值零，`Data="0x"` 表示显式空数据；不补默认 data。地址/hash/quantity/data 字符串不规范化大小写或重编码。
 
-回滚仅撤回本候选三文档增量；批准后的 T025 修改按独立快照撤回自有增量。未解决 P1、超出十路径/字段表、需要新增依赖或时间上限到达均停止并报告，不静默扩大授权。旧 T025 证据保留为历史，不作为新契约通过凭据；T017–T024 不受影响。
+LogFilter 的 FromBlock/ToBlock 必须有效；Addresses 空时省略 address，非空编码数组；Topics 顺序不变，空内层编码 null 通配位，非空内层编码 OR 数组，最多四位置。
+
+RawMessage 的 nil 表示键缺失，原始 `null` 表示 JSON null，`"0x0"`/`false` 保持显式值；不合成默认值。Reward 原始数组由调用方按 `[][]string` 解码。不复制 scanner 的 `Removed *bool`：它违反小字段禁用指针，而 bool 又会合并缺失/null/false；使用 RawMessage 无须指针例外。三个 nullable 方法继续 `(零值,false,nil)`、`(值,true,nil)`、`(零值,false,error)`。
+
+#### ER-03/04：转换与单一边界
+
+- `jsonrpc` 负责信封、ID、body、响应限长和 context；EVM 原样传入 context，不新增预取消检查或 typed-nil context 反射。调用方遵守非 nil context 契约，自定义 Caller 负责其 context 行为。构造 nil/typed-nil Caller 校验仍保留，且只在 New 发生。
+- EVM 负责固定方法/参数 wire、结果解码、保留原始信息的错误包装及提交 unknown。删除零值/nil Client 的重复保护、duplicate-key 扫描、全字段白名单、必需键循环、手写 schema validator、DTO 跨字段一致性检查、无证据 fallback/default/recover。不要先 `json.Valid` 再 Unmarshal。
+- 请求前仅校验有协议依据的输入：BlockRef 非零；地址 20 字节、hash 32 字节、Data 偶数位且有 `0x`；已提供 CallRequest quantity 为最短非负 hex，gasPrice 与动态费用互斥；Filter 地址/topic 编码和最多四位置；count>0；percentiles 有限、0–100、非递减。nil percentiles 编码 `[]`；不修改输入。
+- 结果以 RawMessage 接收后单次标准 `json.Unmarshal` 到局部目标；只有三个 nullable 方法接受顶层 null。其他方法顶层 null、JSON 语法/目标类型错误返回 Protocol、全零结果，并按 §4 保留底层解码错误。不逐字段检查 DTO hex、缺失键、null、组合关系、FeeHistory 维度/比例范围。
+- 标量数值 API 保留已有便利转换：Quantity 必须 `0x`、至少一位 hex、无前导零；uint64 溢出报 Protocol，big.Int 不截断。金额单位仍为 wei。公开转换最小集合仅三个 `ToString` 和既有 `AtNumber`；不新增 Parse/ToDTO/Clone/Optional。
+- GetCode/Call 返回原始 Data 字符串；提交前要求非空偶数位 Data，原样发送一次；成功返回必须是 32 字节 hash，否则 Protocol+SubmissionUnknown。错误按 §4 保留原始字段和完整依赖错误链；必要的外层包装只补实际方法与提交状态，不重建只剩 code 的副本。
+- 标准解码产生独立切片/RawMessage；不额外递归 clone。SDK 不修改输入。Config 与标量 big.Int 返回保持独立存储；DTO 不再含 big.Int。
+
+#### ER-01–05：测试、风险和门禁
+
+| 独立风险 | T025 最小证据 |
+|---|---|
+| API/接线变化遗漏 | 标量底层类型与 ToString；两链分别 14 方法、精确参数、一次调用；New 零 I/O、nil/typed-nil Caller；身份 1/56 与 mismatch |
+| 原始值或存在性丢失 | 每个 DTO 一个完整互异值 fixture；pending/create、status=0/历史 root、缺失/null/`"0x0"`/false、Reward 缺失/空数组；逐字段等值 |
+| 请求编码错误 | 字符串空省略/显式零、费用互斥、Filter 通配/OR、非法地址/hash/data/quantity、percentiles NaN/Inf；拒绝时零调用 |
+| 不必要验证重新长回 | 未知扩展、DTO 缺字段、非规范但原样保留的 DTO hex、较短 FeeHistory 均可解码；无全字段负例矩阵 |
+| 转换/错误/提交 | 标量 >uint64 大整数、uint64 溢出、独立存储；nullable 三态、坏 JSON/顶层类型、RPC Message/Data/Cause、context Is/As；原样载荷、非零 hash、拒绝与 unknown |
+
+T025 只修改原六测试文件，原十路径授权不扩大，本轮不改生产声明。用 JSON fixture 和少量测试侧反射检查变化后的字段/底层类型；新 ToString 用测试本地接口断言。这样旧实现可以编译并在行为/类型断言处 RED，不以未定义符号制造 RED。反射不得进入生产解码。T026 后所有新断言必须实际执行。
+
+保护仍适用的 DI、14 方法、nullable、单次提交和网络身份断言。错误受保护断言改为“不主动附加请求秘密、原始字段/Cause 保留”；撤换旧错误全格式脱敏、Has、固定数组/bytes、全字段 schema/duplicate-key、typed-nil context 与 DTO 大整数所有权断言；对应新断言在 T025 审核后成为受保护证据。T026 不改测试。
+
+验证仅 `go test ./evm ./ethereum ./bnb` 与 `go vet ./evm ./ethereum ./bnb`；T025 须有目标 RED，T026 须 GREEN 并通过 vet。公开 API 是否已有使用者未知；底层类型、字段、Parse/Has 删除均需 Human 接受破坏性变更，无兼容层。本修订总时箱：规划 20 分钟、编码 20 分钟、验证含审核最多 30 分钟，T025/T026 共享。预计最终 7 生产文件约 350–500 行、6 测试文件约 600–900 行，仅作预警。
+
+旧 T025/T026 完成历史保留，相关证据 stale；T023/T024 有效。RAW-ERROR-v1 先依次完成 T017→T022；随后更新并重新执行 T025 RED→独立审核→Human，再 T026 GREEN/Refactor→独立审核→Human。T027 继续暂停。越出字段/路径/依赖、规范冲突、时箱耗尽或缺可信证据即停并报告。
+
+### 3.3 BITCOIN-CONTRACT-v1 首版契约 / First-Release Contract
+
+**状态与证据 / Status and evidence.** BITCOIN-CONTRACT-v1 暂停且不属于本次批准范围，不得实施或直接复制其旧严格解析模式。2026-11-17 快照 `d3502b8c151de849bfc545656ce2dd81d87d1e86` 无 `bitcoin/`；§3.1只有两个nullable签名，architecture §7.1/7.3/7.6/12.4未冻结其他方法/DTO。此F5缺口只影响PLAN-003/T027–T028；RAW-ERROR-v1 重开 T017–T022 与 T025/T026，T023/T024 保持完成。以下Go字段子集、校验和返回规则是项目候选决策，不声称官方提供相同Go契约。
+
+**已核验官方资料 / Verified sources.** 2026-11-17实际读取Bitcoin Core 29.0：[getblockchaininfo](https://bitcoincore.org/en/doc/29.0.0/rpc/blockchain/getblockchaininfo/)（网络/裁剪）、[getblockcount](https://bitcoincore.org/en/doc/29.0.0/rpc/blockchain/getblockcount/)（高度）、[getblock](https://bitcoincore.org/en/doc/29.0.0/rpc/blockchain/getblock/)（verbosity/确认数/txid）、[gettxout](https://bitcoincore.org/en/doc/29.0.0/rpc/blockchain/gettxout/)（null/mempool/BTC/script）、[getmempoolentry](https://bitcoincore.org/en/doc/29.0.0/rpc/blockchain/getmempoolentry/)（vsize/fees/依赖）、[estimatesmartfee](https://bitcoincore.org/en/doc/29.0.0/rpc/util/estimatesmartfee/)（target/模式/BTC-kvB/无估值）、[testmempoolaccept](https://bitcoincore.org/en/doc/29.0.0/rpc/rawtransactions/testmempoolaccept/)（allowed/条件字段/不广播）、[sendrawtransaction](https://bitcoincore.org/en/doc/29.0.0/rpc/rawtransactions/sendrawtransaction/)（hex/默认费用策略/txid）；Core 28.0 [getrawtransaction](https://bitcoincore.org/en/doc/28.0.0/rpc/rawtransactions/getrawtransaction/)（verbosity=1/coinbase/witness/历史前提）；Bitcoin开发者 [getblockhash](https://developer.bitcoin.org/reference/rpc/getblockhash.html)（按高度查hash）及[历史查询说明](https://developer.bitcoin.org/reference/rpc/getrawtransaction.html)。均为官方一手来源、可信度高；29.0 getrawtransaction页读取超时，未作为证据。固定文档版本不代表最新版；目标是满足此字段形状的节点，不承诺所有历史/未来版本兼容，账号兼容性仍由T036验证。
+
+**选择与可行性 / Choice and feasibility.** 选择标准库精确数字解析、固定verbosity、值DTO和单笔预检。相比float64缩放无精度损失；相比完整Core schema/全部模式/package和公开任意精度金额，首版子集降低复杂度和维护成本，未知字段允许扩展。内部可用标准库math/big，无新依赖或公开抽象。无需另建PoC/benchmark，确定性边界fixture可证明解析可行性。节点缺字段/历史能力必须返回真实错误，不静默降级。
+
+#### BC-01：类型、构造和方法 / Types, construction and methods
+
+```go
+// package bitcoin；除 Client 外均值语义。
+type Config struct{}
+type TxID string
+type BlockHash string
+type RawTransaction string
+type Script string
+type Witness []string
+type Satoshi int64
+type SatoshiPerKVByte int64
+type EstimateMode string
+const (
+    EstimateUnset EstimateMode = "unset"
+    EstimateEconomical EstimateMode = "economical"
+    EstimateConservative EstimateMode = "conservative"
+)
+func New(Config, jsonrpc.Caller) (*Client, error)
+// 五个string类型各有 ToString() string；两个int64类型各有 ToInt64() int64。
+// 转换方法只返回底层值，不解析或校验。
+type GetTxOutRequest struct {
+    TxID TxID
+    Vout uint32
+    IncludeMempool, HasIncludeMempool bool
+}
+type GetRawTransactionRequest struct {
+    TxID TxID
+    BlockHash BlockHash
+    HasBlockHash bool
+}
+type EstimateSmartFeeRequest struct {
+    ConfTarget int64
+    Mode EstimateMode
+    HasMode bool
+}
+```
+
+Config明确为空，保留既定构造签名，不新增探测/配置策略；New保存私有Caller，nil/typed-nil返回Configuration且零调用。TxID（也用于WTxID字段）/BlockHash是RPC展示顺序的64位hex，不反转字节。RawTransaction是非空偶数位hex；Script可为空；Witness每个string为可为空的偶数位hex。无0x/空白，接受大小写并原样保留。类型转换不绕过方法校验；不增公开Parse/MarshalJSON/UnmarshalJSON入口，不解析交易结构/计算txid/重建载荷。
+
+全部方法接收者为 `*Client`、首参 `ctx context.Context`，表中只省略ctx。nil/typed-nil context为InvalidArgument且零调用；nil/零值Client为Configuration。预取消context在Caller前返回安全Transport+context哨兵且零调用。合法请求至多调用Caller一次，无辅助RPC。
+
+| 方法 / Method | 参数与返回（省略ctx） / Signature | RPC / 位置参数 |
+|---|---|---|
+| GetBlockchainInfo | `() (BlockchainInfo,error)` | getblockchaininfo；`[]` |
+| GetBlockCount | `() (int64,error)` | getblockcount；`[]`；非负链顶高度 |
+| GetBlockHash | `(height int64) (BlockHash,error)` | getblockhash；`[height]`；height>=0 |
+| GetBlock | `(hash BlockHash) (Block,error)` | getblock；`[hash,1]`，交易ID列表 |
+| GetTxOut | `(req GetTxOutRequest) (TxOut,bool,error)` | gettxout；`[txid,vout]`；HasIncludeMempool=true才附第三个bool，包括false |
+| GetRawTransaction | `(req GetRawTransactionRequest) (Transaction,error)` | getrawtransaction；`[txid,1]`；HasBlockHash=true才附第三个blockhash |
+| GetMempoolEntry | `(txid TxID) (MempoolEntry,error)` | getmempoolentry；`[txid]` |
+| EstimateSmartFee | `(req EstimateSmartFeeRequest) (FeeEstimate,bool,error)` | estimatesmartfee；`[confTarget]`或`[confTarget,mode]`；target 1–1008，显式mode限三个常量 |
+| TestMempoolAccept | `(payload RawTransaction) (MempoolAcceptResult,error)` | testmempoolaccept；`[[payload]]`，单笔、不广播 |
+| SendRawTransaction | `(payload RawTransaction) (TxID,error)` | sendrawtransaction；`[payload]`，一次提交 |
+
+Has=false忽略对应值且不发null占位；省略的mempool/mode由节点决定，不补默认或钳制target。预检/提交不暴露maxfeerate/maxburnamount，保留节点默认策略；不增加package、其他verbosity或ValidateNetwork。非法hash/hex/target/已提供mode在Caller前InvalidArgument。原始入口继续使用jsonrpc.Client.RawCall，不另增链级入口；禁止钱包、构造、签名、解锁调用。
+
+#### BC-02：金额与费率 / Money and fee rates
+
+所有已列BTC金额为Satoshi，BTC/kvB费率为SatoshiPerKVByte；1 BTC=10^8 sat，1kvB=1000 virtual bytes。0.00001000 BTC/kvB=1000 sat/kvB，不能标为sat/vB。本版不提供sat/vB转换/费用建议，不向上或向下舍入。
+
+直接读取JSON number原始token，以十进制整数运算精确乘10^8，最终须为int64范围非负整数。允许JSON合法指数/多余尾零：1e-8、0.000000010为1sat；1e-9拒绝。-0归零，负非零拒绝。字符串数字、NaN/Inf、坏JSON数字、非整数sat、溢出均Protocol，不经过float32/float64。92233720368.54775807为解析器int64上界，不额外实施共识供应量限制。先按token位数/指数判断可表示性或用有界算法，防止巨大指数无界分配；不新增fuzz/load任务。嵌套vout/fees同样适用。
+
+#### BC-03：最小充分 DTO / Minimal sufficient DTOs
+
+下表为全部首版公开字段，同DTO多行合并。箭头后为精确wire键；除可选者均必需非null。Has不来自wire；可选键缺失时Has=false且值为零，提供null为Protocol。整数token不用小数/指数/字符串，检查溢出；高度/时间/计数非负，size/vsize/weight正数，sequence/vout/locktime为uint32；Block.Confirmations允许-1或非负数。
+
+| DTO | 精确Go字段 / Fields ← wire | 存在性 / Presence |
+|---|---|---|
+| BlockchainInfo | `Chain string; Blocks, Headers int64; BestBlockHash BlockHash; Pruned bool` ← chain/blocks/headers/bestblockhash/pruned | chain非空，不封闭网络名枚举 |
+| BlockchainInfo | `PruneHeight int64; HasPruneHeight bool` ← pruneheight | 可选，不据此承诺txindex/历史可用 |
+| Block | `Hash BlockHash; Height, Confirmations, Time int64; TxIDs []TxID` ← hash/height/confirmations/time/tx | tx非null数组，可空，逐元素校验；hash与请求hex等值（大小写等价） |
+| Block | `PreviousBlockHash, NextBlockHash BlockHash; HasPreviousBlockHash, HasNextBlockHash bool` ← previousblockhash/nextblockhash | 分别可缺失；genesis/链顶不合成零hash |
+| ScriptPubKey | `Hex Script; Type string; Address string; HasAddress bool` ← hex/type/address | hex/type必需，type非空且允许新脚本类型；address可选非空字符串，不推导地址 |
+| TxOut | `BestBlock BlockHash; Confirmations int64; Value Satoshi; ScriptPubKey ScriptPubKey; Coinbase bool` ← bestblock/confirmations/value/scriptPubKey/coinbase | 0确认/0金额合法；空对象不是不存在 |
+| Transaction | `TxID, WTxID TxID; Hex RawTransaction; Version int32; LockTime uint32; Size, VSize, Weight int64; Vin []TxIn; Vout []TxOutput` ← txid/hash/hex/version/locktime/size/vsize/weight/vin/vout | vin/vout非空非null数组；txid与请求等值，wtxid可不同，不本地重算 |
+| Transaction | `BlockHash BlockHash; HasBlockHash bool; Confirmations, BlockTime int64; HasConfirmations, HasBlockTime bool; InActiveChain, HasInActiveChain bool` ← blockhash/confirmations/blocktime/in_active_chain | 四键分别可缺省，0/false保留Has=true；in_active_chain仅在请求带blockhash时允许且要求返回，返回blockhash若有须与请求匹配 |
+| TxIn | `Sequence uint32; TxID TxID; HasTxID bool; Vout uint32; HasVout bool; ScriptSig Script; HasScriptSig bool; Coinbase Script; HasCoinbase bool; Witness Witness; HasWitness bool` ← sequence/txid/vout/scriptSig.hex/coinbase/txinwitness | coinbase存在时txid/vout/scriptSig缺失，否则三者必需；scriptSig为object且hex必需，空scriptSig合法。witness可缺省，提供即非null字符串数组，允许空数组/空元素，顺序不变 |
+| TxOutput | `N uint32; Value Satoshi; ScriptPubKey ScriptPubKey` ← n/value/scriptPubKey | 不从地址生成脚本，不合并输出 |
+| MempoolEntry | `VSize, Weight, Time, Height int64; BaseFee Satoshi; Depends, SpentBy []TxID` ← vsize/weight/time/height/fees.base/depends/spentby | fees为object且base必需；两列表必需非null、可空；不暴露modified/ancestor/descendant费用 |
+| FeeEstimate | `FeeRate SatoshiPerKVByte; Blocks int64; Errors []string` ← feerate/blocks/errors | blocks必需整数，无估值允许-1或非负，成功估值非负；Errors 保留节点顺序；条件规则见下 |
+| MempoolAcceptResult | `TxID, WTxID TxID; Allowed bool; VSize int64; HasVSize bool; BaseFee Satoshi; HasBaseFee bool; RejectReason, RejectDetails string` ← txid/wtxid/allowed/vsize/fees.base/reject-reason/reject-details | RPC顶层恰一个object数组；allowed必需。true时vsize/fees.base必需且Has=true；false时保留节点拒绝字段，不按英文内容分类 |
+
+GetTxOut顶层null为`(TxOut{},false,nil)`，合法对象为`(值,true,nil)`，错误为`(TxOut{},false,error)`。EstimateSmartFee必须为object：有效feerate存在为`(值,true,nil)`，errors可缺失或空字符串数组；无feerate时须有非空errors字符串数组和有效blocks，返回`(FeeEstimate{Blocks:节点值, Errors:原始数组},false,nil)`，不合成0费率。feerate与非空errors并存、两者均无、坏类型/顶层null均Protocol。该 bool 表示 `hasEstimate`，不是对象不存在；§3.1 的零 DTO 通则明确排除此已收到节点原生估费结果的场景。其余八方法顶层null均Protocol；present不表示确认成功。
+
+未列asm/descriptor/完整区块头/prevout/package费率等字段允许忽略，不宣称完整Core schema。此字段集支持architecture §12.4的txid/wtxid/区块关联/vin/vout/脚本/金额核对；地址非每种脚本必有，script/witness不授权交易构造。
+
+#### BC-04/05：历史、wire、错误和所有权 / History, wire, errors and ownership
+
+- 无blockhash历史查询依赖mempool或就绪txindex；指定blockhash仍须区块可用且包含交易，裁剪节点不保证历史。历史/索引不可用、未找到、不在mempool等错误按 §4 保留原始 code/message/data，不改为null、不按文本猜测不存在，不预探测/补查询/切换节点。
+- Caller结果以json.RawMessage接收，严格检查单个JSON value；递归拒绝重复键（含转义同名、未知字段内重复键）、尾随文档、坏JSON。键按精确wire名识别，不用大小写折叠替代必需键；未知字段忽略业务schema但JSON仍须合法。缺键/null/坏嵌套元素/溢出均Protocol、全零结果，不返半解析DTO；fake/自定义Caller同样适用，不能只依赖协议层。
+- 输入字符串不修改；Block.TxIDs、Transaction.Vin/Vout、每个TxIn.Witness、MempoolEntry.Depends/SpentBy与注入依赖、其他字段/结果、后续调用不共享可变存储。新分配解码或深拷贝均可；不增Clone/通用Optional，不要求调用方浅拷贝后自动写时复制。
+- 非结构化 Caller 错误归 Transport 并将原 error 作为 Cause；结构化错误按 §4 保留原始字段、完整包装链和实际 RPC 方法。查询/预检 `SubmissionUnknown=false`。
+- SendRawTransaction原样载荷一次调用；成功txid不等于确认。本地校验失败/Caller前取消unknown=false；进入Caller后Transport/HTTP/Protocol/取消及畸形成功响应unknown=true；可信结构化RPC拒绝false并保留数字code含0及原始字段，其他分类按§4。不凭文本猜测拒绝，不补发。
+
+#### BC-01–05：风险、预算和门禁 / Risks, budget and gates
+
+| 独立风险 / Risk | T027原路径内最小证据 / Evidence |
+|---|---|
+| 隐藏I/O/接线错 | client_test：New nil/typed-nil/零调用；十方法逐项检查方法/参数/一次调用/实际返回；nil/typed-nil/预取消context和非法参数零调用。types_test：七个标量转换非零等值 |
+| 精度/单位错 | gettxout集中覆盖1sat/指数/尾零/int64边界/负数/非整数sat/溢出/字符串；vout、mempool/预检fees.base、估费各有互异非零精确正例，不复制五套负例 |
+| DTO丢字段/缺失混淆 | 各DTO完整正例逐字段等值；coinbase/普通输入、witness含空项、无地址脚本、确认/未确认关联、孤块-1、UTXO三态；表格删除必需键，不仅测空对象 |
+| 历史/Has参数错 | blockhash省略/忽略坏值/显式参数、include_mempool=false、历史RPC code不吞、关联hash/txid错失败、零辅助RPC |
+| wire/存储泄漏 | 重复/转义重复/尾随/坏hex/type/null/大小写替代键/未知字段；修改返回切片含witness及fake缓冲后其他字段和后续结果不变 |
+| 无估值/预检拒绝被误报成功 | target/mode边界、估值/无估值/畸形null、allowed true/false、数组数量和条件字段；一次调用且无submit |
+| 提交拒绝/未知混淆、信息丢失 | 非零txid逐字符等值、大小写payload原样；本地拒绝零调用、RPC code/message/data/Cause、Transport/HTTP/Protocol/取消/畸形txid unknown；不主动附加请求秘密 |
+
+五测试文件局部fixture/helper去重，不增工具包/依赖。必要时client_test可用一个httptest证明链层到既有Bitcoin方言接线，其余fake，不重测协议层。L1–L3必需，L4仅离线契约；L5限原始错误信息保留、不主动追加请求秘密、所有权及有界解析，报告脱敏仅属于 harness/runner 输出边界；不新增race/fuzz/benchmark；L6不适用，真实验收T036。T027仅完整声明和Unsupported/零值分支，编译后目标行为断言RED才有效；T028只在原五路径实现，全部受保护断言实际执行且GREEN。
+
+T027 最多 70 分钟：规划 20、Coder 20、验证及固定 Auditor 30；预计声明 160–220 行、测试 650–900 行，220/900 只作预警而非写满目标。当前候选暂停；若以后恢复，仍须重新核对 constitution 1.3 并另获 Human 批准。七路径和 T028 五路径不变，不按行数拆任务/扩时。T023/T024 证据有效，T017–T022 与 T025/T026 的受影响错误证据 stale。
 
 ## 4. 错误与提交语义
+
+**依据。** 当前实现没有 Message/Data 字段，私有 cause 只保留归一化 context 哨兵；JSON-RPC 已解码 message 但会丢弃 message/data，协议客户端也会丢弃 HTTP 错误正文与普通底层 error。JSON-RPC 2.0 定义 `code`、`message` 和可选任意 JSON `data`；Go `errors.Is/As` 沿 `Unwrap` 遍历错误链。来源：[JSON-RPC 2.0](https://www.jsonrpc.org/specification)、[Go errors](https://pkg.go.dev/errors)，访问日期 2026-11-17。协议字段是外部事实；下述 Go API 与格式是本项目候选决策。
+
+| 方案 | 复杂度/性能/扩展 | 兼容性/风险/维护 | 决定 |
+|---|---|---|---|
+| 直接返回底层 error，取消 SDK 包装 | 实现少，但节点 JSON 仍须造错误，分类/unknown 无统一承载 | 丢失现有状态与 code 契约 | 拒绝 |
+| 扩展现有 `apierror.Error` | 标准库、有限字段、响应继续限长 | 保留分类/unknown；公开字段和格式有明确兼容性变化 | 采用 |
+| 多套 Node/Transport/SafeView 错误与脱敏策略 | 类型、配置与分支显著增加 | 把业务输出策略重新带入 SDK | 拒绝 |
 
 ```go
 type Kind string
@@ -235,14 +369,18 @@ const (
 )
 
 type Error struct {
-    Kind              Kind
-    Method            string
-    HTTPStatus        int
-    RPCCode           int
-    HasRPCCode        bool
-    NodeCode          string
-    SubmissionUnknown bool
-    cause             error
+    Kind                  Kind
+    Method                string
+    HTTPStatus            int
+    RPCCode               int
+    HasRPCCode            bool
+    NodeCode              string
+    Message               string
+    Data                  json.RawMessage
+    ResponseBody          []byte
+    ResponseBodyTruncated bool
+    SubmissionUnknown     bool
+    Cause                 error
 }
 
 func (e Error) Error() string
@@ -250,15 +388,22 @@ func (e Error) Unwrap() error
 func (e Error) WithContextCause(err error) Error
 ```
 
-`HasRPCCode=false` 表示没有节点数字码；为 true 时保留 `RPCCode` 原值，包括零。`cause` 只能为 nil、`context.Canceled` 或 `context.DeadlineExceeded`；底层包装错误只判断是否属于这两个哨兵并保存哨兵本身，同时匹配时优先 `context.Canceled`。`Error()` 不得包含原始 Cause、Message、Data、endpoint、Header 或完整载荷，`Unwrap()` 只返回 cause。
+`HasRPCCode=false` 表示没有节点数字码；为 true 时保留 `RPCCode` 原值，包括零。精确契约如下：
 
-`WithContextCause` 是跨包设置 cause 的唯一批准入口，并使用值接收者和值返回。它不得保存传入 error：先用 `errors.Is` 判断 `context.Canceled`，再判断 `context.DeadlineExceeded`，分别只保存对应标准库哨兵；nil 或其他错误将 cause 清空。原 `Error` 值不得被修改。此方法不授权通用 Cause 字段、任意 error 包装或新的错误构造抽象。
+1. **Error()：**以 `Kind.ToString()` 为基础；Message 非空则追加 `": " + Message`；否则 Cause 非 nil 则追加 `": " + Cause.Error()`；否则只返回 Kind。零 Kind 时不产生开头 `": "`，只返回选中的文本。Message 和 Cause 同时存在时字符串选 Message，完整 Cause 仍通过字段和 Unwrap 可达。Data、ResponseBody、Header 和请求载荷不自动拼接。该字符串不承诺脱敏。
+2. **Unwrap：**精确返回 `e.Cause`，不替换、归一化、提取最底层或过滤 error。
+3. **WithContextCause：**保留已有签名；返回值副本，唯一变化为 `Cause=err`。nil 清空；普通错误、包装错误、`errors.Join` 均原样保存。名称是已有公开 API，不新增另一套 setter 或错误构造抽象。
+4. **值语义与兼容性：**SDK 返回 Error 值，`var e apierror.Error; errors.As(err,&e)` 不变。新增 RawMessage/切片后 Error 不再可比较；旧 `==` 使用者须改为逐字段检查或 `errors.Is/As`。Error() 格式和 WithContextCause 行为变化属于明确兼容性变更，不提供兼容层。
+5. **节点字段：**JSON-RPC Message 是节点字符串的解码值，Data 是原始 JSON value。Data 不存在为 nil，显式 null 原样保留；不把节点 Message 合成为 SDK 模板文本。NodeCode 用于链原生字符串码，不设内容白名单。
+6. **ResponseBody：**协议客户端失败且已经读取响应时，保存实际读到的原始字节，最多 MaxResponseBytes；包括 HTTP 错误、无效协议响应及 RPC 错误。仅检测到额外字节时置 `ResponseBodyTruncated=true`。部分读取失败的 Cause 保留实际 read error，不承诺正文完整。成功返回不额外保存正文。Do 同时返回 response/error 时保存已知 HTTP status、原 error 并按原资源契约关闭 body，不为收集诊断额外读取已失败的响应。
+7. **分类优先级：**完整、未超限且匹配方言/ID 的 RPC error → RPC，同时保留 HTTPStatus；不满足有效错误信封的非 2xx → HTTP；2xx 无效信封/结果 → Protocol；实际 I/O 失败 → Transport。读取不完整或截断内容不得作为可信 RPC 拒绝。
+8. **Cause 来源：**marshal、URL/请求构建、Do、Read、JSON decode 等实际返回的 error 均保存；纯布尔校验失败无底层 error 时 Cause=nil，不为每个分支制造新错误。解析器内部返回已取得的解码 error；不为了美化诊断重写整套解析器。
+9. **context：**协议层直接观察到 `ctx.Err()` 时保存该 error；收到依赖返回的包装 error 时保存原依赖 error。不得因同时观察到 ctx 取消而用 `ctx.Err()` 覆盖无关的实际错误，也不合成取消分类。原链同时匹配 canceled/deadline 时两者都可匹配。链客户端不新增重复 context 检查、typed-nil 反射或自定义 Is/As。
+10. **链包装：**收到 error 后保留整个 error 作为外层 Cause；若 `errors.As` 可提取 apierror.Error，复制其原始节点字段、状态及类别，再设置实际 Method 和该方法的 SubmissionUnknown。不能重建只剩 code 的副本，不能丢弃外层 fmt/error wrapper。无结构化错误时归 Transport，Cause 为原 error。不新增 Kind 白名单防御。
+11. **提交 unknown：**进入注入依赖后发生 Transport/HTTP/Protocol/取消或畸形成功结果时 `SubmissionUnknown=true`；本地校验失败或可信节点明确拒绝为 false。保留信息不等于判断可重试，SDK 不根据 Message/Data/正文英文文本决定是否送达、接受或补发。
+12. **职责隔离：**SDK 不主动收集或追加 URL、Header、请求、交易载荷。原 error 和节点响应中已有内容仍可达。无内置 logger、脱敏开关、回调策略、错误扫描器、recover 或新依赖。
 
-`Kind` 的底层类型为 string，必须提供 `func (k Kind) ToString() string`。SDK 产生的错误以 `Error` 值装入 error 接口；调用方使用 `var e apierror.Error; errors.As(err, &e)` 提取值，不公开 `*Error` 返回契约。
-
-错误对象不得保存 URL、Header、请求/响应正文、原始底层错误字符串或完整交易载荷。只有 `context.Canceled` 与 `context.DeadlineExceeded` 可以安全参与 `errors.Is`。
-
-提交调用进入注入依赖后，如果发生传输、HTTP、协议或取消错误，`SubmissionUnknown=true`；本地校验失败或可信节点明确拒绝则为 false。SDK 不根据错误文本猜测请求是否到达节点。
+这些规则不要求捕获此前未作为返回错误处理的 body.Close 错误；本轮不改变其现有生命周期与成功/失败优先级。
 
 ## 5. 五个功能 Plan
 
@@ -273,6 +418,8 @@ func (e Error) WithContextCause(err error) Error
 每个行为实现 Task 必须依赖更早的失败测试 Task；RED 由测试 Task 留证，GREEN/Refactor 由对应实现 Task 完成。不得把两者写成同一 Task 的内部步骤来替代依赖门禁。各链方法范围仍以 spec §3 和本方案既有契约为准，不按单个 RPC 方法继续拆分。
 
 默认依序处理 PLAN-001→002→003→004→005。依赖满足并不自动授权并行 Agent。测试/实现 Task 之间不设置要求全部测试为绿的独立交付门禁；子 Plan 交付时必须全部转绿并完成规定审核。
+
+RAW-ERROR-v1 已批准：T017/T018 已完成门禁并获准集成，T019 未授权；T023/T024 保持完成；T025/T026 reopened 且当前 T025 整包 RED/审核对新基线 stale；T027/T028 继续暂停；T029–T036 按依赖阻塞。后续默认顺序为 T019→T020→T021→T022→T025→T026，不授权并行执行，也不新增 T037。
 
 ## 6. 请求流程
 
@@ -427,6 +574,7 @@ func verifyManifest(raw []byte, expectedDigest string) (string, error)
 - 预期节点拒绝由 callback 完成断言后返回 nil；limiter/operation 失败为 sticky，callback PASS 不能覆盖。
 - case 与总体均按 `FAIL > BLOCKED > PASS`；未运行项保留 NOT_RUN。相同严重度按固定类别字典序选择摘要，避免并发顺序影响报告。
 - 报告仅含状态、固定安全类别、合法 required ID、digest 和请求数；不保存任意错误文本或 config。
+- SDK 原始错误是 callback 可检查的输入，不是 report 的序列化模型；request closure 既有返回固定 harness 类别的行为不变。不得把 harness 输出脱敏反向应用到 SDK error。
 - 不做 panic recover/logging；callback panic 由 Go 测试进程失败。
 
 #### HC-08：确定性离线验证
@@ -437,8 +585,10 @@ func verifyManifest(raw []byte, expectedDigest string) (string, error)
 - 检查 operation 的 Deadline、更早父 deadline、预取消、排队/速率等待取消、在途 Done、截止边界与 timer 清理。
 - raw digest 使用独立 literal；空白/键序变化必须在旧摘要下失败。malformed/duplicate/trailing 使用各自匹配 raw digest，避免只因 hash 不同造成假覆盖。
 - config 测试注入 reader/env map，断言精确路径/读取次数；仅使用临时合成文件组合正例，不读取用户实际 env/config。
-- 脱敏覆盖 loader、parser、manifest、waiter、operation、case；检查 error、JSON 与 `%v/%+v/%#v` 无合成秘密。
+- 脱敏覆盖 harness 自有 loader、parser、manifest、waiter、operation、case 错误及 report；检查其 JSON 与 `%v/%+v/%#v` 无合成秘密。本断言不要求 SDK 原始错误满足输出脱敏。
 - 覆盖混合 FAIL+BLOCKED、预算错误被忽略、request error 被 PASS 覆盖、缺项和 child-only 冒充。
+
+SDK→runner→harness 的信息边界由既有 T033/T034 覆盖：callback 可在内存检查 Message/Data/ResponseBody/Cause，runner 只向 report 输出固定类别；不在 T023/T024 重复 SDK 字段矩阵或伪造新的 RED。
 
 ### 7.3 开关
 
@@ -450,28 +600,32 @@ func verifyManifest(raw []byte, expectedDigest string) (string, error)
 
 ```yaml
 planning_baseline:
-  version: PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1
-  approval_status: approved
+  version: PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1+BITCOIN-CONTRACT-v1+EVM-RAW-DTO-v1+RAW-ERROR-v1
+  approval_status: raw_error_v1_t017_t018_complete_awaiting_t019
   approved_file_set:
+    - constitution.md
     - docs/superpowers/001-chain-api-go/spec.md
     - docs/superpowers/001-chain-api-go/plan.md
     - docs/superpowers/001-chain-api-go/tasks.md
-  constitution_version: "1.1"
+  constitution_version: "工作树 1.3 Active；RAW-ERROR-v1 与四文件已获 Human 批准"
   manifest: not_applicable_single_requirement
 
 workflow_state:
-  current: READY_FOR_T027_RED
-  blocked_tasks: []
-  preserved_completed_tasks: [T017, T018, T019, T020, T021, T022, T023, T024, T025, T026]
-  execution_sequence: [T027_RED, T027_READ_ONLY_AUDIT, T027_HUMAN_GATE, T028_GREEN_REFACTOR, T028_READ_ONLY_AUDIT, T028_HUMAN_GATE]
+  current: T018_HUMAN_APPROVED_FOR_INTEGRATION
+  active_task: none
+  first_authorizable_task: T019
+  blocked_tasks: [T019, T020, T021, T022, T025, T026, T027, T028, T029, T030, T031, T032, T033, T034, T035, T036]
+  preserved_completed_tasks: [T017, T018, T023, T024]
+  reopened_tasks: [T017, T018, T019, T020, T021, T022, T025, T026]
+  execution_sequence: [T017, T018, T019, T020, T021, T022, T025, T026]
   coder_may_report: [IMPLEMENTED]
   transitions: [IMPLEMENTED, LOCALLY_VERIFIED, READY_FOR_AUDIT, AUDIT_PASSED, DONE]
   done_requires: [valid_snapshot_bound_evidence, auditor_pass_recommendation, human_final_approval]
 
 scope:
   allowed_paths: "每个 Task 中展开列出的路径，仅对该 Task 有效"
-  allowed_behavior_changes: "spec §3、AC-01–13 与本方案既有接口"
-  invariants: "spec C-01–10；constitution 1.1 全文"
+  allowed_behavior_changes: "spec §3、§4.4、AC-01–13 与本方案 §4 的原始错误接口"
+  invariants: "spec C-01–10；Human 批准后的 constitution 1.3；实现阶段不得修改 constitution"
   non_goals: "spec §6；无服务、索引、后台机制、新依赖或本期钱包示例"
   protected_evidence: "先行测试断言、批准验收标准、冻结样本及摘要"
   requires_approval:
@@ -490,23 +644,63 @@ verification_layers:
   L2: "必需：聚焦编译、vet、依赖和公开 API"
   L3: "必需：表格驱动单元、边界和异常测试"
   L4: "子 Plan 仅 fake/httptest 契约；真实集成延后 T036"
-  L5: "仅批准风险：错误脱敏、资源关闭、请求预算、JSON-RPC ID race、live limiter/账本 race 与 context deadline 生命周期"
+  L5: "仅批准风险：原始错误信息保留与 harness 输出隔离、资源关闭、请求预算、JSON-RPC ID race、live limiter/账本 race 与 context deadline 生命周期"
   L6: "不适用：无部署交付；真实链验收属于 T036"
+
+evm_raw_dto_delta:
+  affected_tasks: [T025, T026]
+  authority: "spec §4.2 ER-01–05；plan §3.2"
+  status: raw_error_v1_makes_current_t025_gate_stale
+  protected_test_revision: "仅 T025 按 §3.2 撤换被替代契约；新 RED 审核后冻结"
+  historical_evidence: "T025/T026 旧批准与集成保留；当前整包 RED/审核不能批准 T026，待 T020/T022 后重建受影响证据"
+
+raw_error_delta:
+  authority: "Human 2026-11-17 原始错误裁决；spec AC-04/RE-01–08；plan §4"
+  status: t017_t018_complete_awaiting_t019
+  affected_plans: [PLAN-001, PLAN-002, PLAN-003, PLAN-004, PLAN-005]
+  reopened_tasks: [T017, T018, T019, T020, T021, T022, T025, T026]
+  preserved_completed_tasks: [T017, T018, T023, T024]
+  paused_unapproved_tasks: [T027, T028]
+  current_t025_red_and_audit: stale_for_new_baseline
+  new_plans: 0
+  new_tasks: 0
+  new_packages: 0
+  new_dependencies: 0
+  new_runtime_configuration: 0
+  architecture_sync: not_authorized_this_revision
+  protected_evidence_revision:
+    permitted_in: [T017, T019, T021, T025]
+    replace_only: "原始字段禁止、Cause 裁剪、取消优先归一化、SDK 错误全格式脱敏"
+    retain: "DI、协议信封、限长、body 关闭、ID 并发、路径边界、DTO、nullable、单次提交、网络身份"
+    becomes_protected_after: "对应当前 RED、固定 Auditor 及 Human 门禁"
+  stop_conditions:
+    - "需要新增路径/API/配置/依赖，且不在本候选精确字段清单内"
+    - "无法保留 Cause 而不改变既有提交语义"
+    - "出现新的协议或值语义冲突"
+    - "共享时箱耗尽或固定角色不可用"
+
+bitcoin_contract_delta:
+  affected_tasks: [T027, T028]
+  authority: "spec §4.3 BC-01–05；plan §3.3"
+  status: paused_not_approved
+  scope: "T027原7路径；T028原5路径；无新Plan/Task/依赖"
+  preserved_evidence: "T023/T024；T017–T022 与 T025/T026 的受影响错误证据 stale"
 
 harness_contract_delta:
   affected_tasks: [T023, T024]
   authority: "spec AC-09/§5.1；plan §7.2 HC-01–HC-08"
+  status: completed_preserved_in_raw_error_v1
   protected_test_revision:
     permitted_only_in: T023
     reason: "旧断言包含未经批准的 digest/admission/status 选择，且缺 config/deadline/race 边界"
-    becomes_protected_after: "新 T023 RED 与固定 Auditor 审核通过"
+    becomes_protected_after: "HARNESS-CONTRACT-v1 的 T023 RED 与固定 Auditor 审核通过；RAW-ERROR-v1 不重开"
   production_concurrency:
     permitted: "请求 closure 的可取消等待、同步槽位/计数/速率控制"
     prohibited: "后台 worker、自动重试、轮询、FIFO/优先级框架"
   external_read:
     permitted: "仅 test-only 显式路径与注入 env lookup"
     prohibited: "核心 SDK 读取、默认路径、公共 RPC fallback、关闭开关后读取"
-  historical_evidence: "旧 T023 保留为历史，不作为本版本门禁凭据"
+  historical_evidence: "HARNESS-CONTRACT-v1 之前的旧 T023 仅作历史；已完成的 T023/T024 证据在 RAW-ERROR-v1 中继续有效，不重新要求 RED"
 
 evidence_provenance:
   bind_to: [task_id, acceptance_ids, command, exit_code_and_result, code_snapshot, test_snapshot, dependency_state, redacted_configuration_identity, environment]
@@ -536,7 +730,24 @@ stop_conditions:
   - "无法取得可信 RED/GREEN 或最终真实材料"
 ```
 
-### 7.5 两级验证与双向追踪 / Two-Level Verification and Traceability
+### 7.5 RAW-ERROR-v1 测试—风险矩阵 / Test-Risk Matrix
+
+| 风险 | 最少证据 | 任务/层级 |
+|---|---|---|
+| 原错误类型或包装链丢失 | 普通 sentinel、类型化 error、包装 context、双 context join；验证 Cause 身份及 `errors.Is/As` | T017→T018；L3 |
+| 字段与格式不一致 | Message 优先、Cause 回退、空 Kind、Data 不自动拼入字符串、值副本不改原值 | T017→T018；L3 |
+| JSON-RPC detail 丢失 | code=0、Message 原样、Data 缺失/null/大数字/对象；2xx 与非 2xx 有效信封 | T019→T020；L3/L4 |
+| 正文丢失或伪称完整 | 非 JSON HTTP body、刚好限长、超限一字节、部分读失败及原错误 | T019→T022；L4 |
+| 用 context 覆盖真正故障 | 包装 context 保留；context 同时取消但实际错误不匹配时不替换 | T019→T022；L3 |
+| SDK 主动追加秘密 | 请求合成标记不在响应/Cause 时错误不得新增；节点或底层自带时必须保留 | T019→T022；L4 |
+| 链包装再次裁剪 | EVM 查询保留字段和原 wrapper；两具体客户端复用同一接线 | T025→T026；L3 |
+| unknown 被文本改变 | 不同英文 Message、相同 code/阶段得到相同分类；拒绝、超时、畸形结果和一次调用 | T025→T032；L3 |
+| 原始 error 进入证据 | callback 能读取原始字段，最终 report/fixture 无合成标记；context 分类仍正确 | T033→T034；L4 |
+| 过度防御反弹 | 每个新增分支可追溯 RE 或既有协议必要性；无内容扫描、重复 context、fallback/recover | 各受影响 Task；L1/L2 |
+
+不新增 PoC、benchmark、fuzz、全字段 schema 或 E2E。现有标准库字段与包装机制足以建立可行性，真实链验收仍只在 T036。
+
+### 7.6 两级验证与双向追踪 / Two-Level Verification and Traceability
 
 | Plan | per_plan_checks | final_acceptance_contribution |
 |---|---|---|
@@ -548,27 +759,28 @@ stop_conditions:
 
 | 计划变化 / Planned Change | 批准依据 / Authority |
 |---|---|
-| transport、apierror、jsonrpc、httpjson | spec §3.1，C-02/05/06，AC-02–04 |
+| transport、apierror、jsonrpc、httpjson | spec §3.1/§4.4，C-02/05/06，AC-02–04；RE-01–06 |
 | evm、ethereum、bnb | spec §3.2，AC-05 |
-| bitcoin | spec §3.2，AC-06 |
+| bitcoin | spec §3.2/§4.3 BC-01–05；plan §3.3；AC-02/04/06/12/13；T027→T028（候选） |
 | solana | spec §3.2，AC-07 |
 | tron 与五个 solidified 查询 | spec §3.2，AC-08 |
 | live 配置、开关、账本、runner、样本、证据 | spec §5，AC-09–11 |
 | HARNESS-CONTRACT-v1 HC-01–HC-08 | spec AC-09、AC-04、C-02/05/06/08/09；T023 RED → T024 GREEN；不改变 T033–T036 依赖与真实验收职责 |
+| RAW-ERROR-v1 SDK→runner 输出隔离 | spec RE-08；T033 RED → T034 GREEN；不重开 T023/T024 |
 | 常量转换、值语义和核心依赖/API 审查 | constitution 5.1–5.3、8.5/8.6，AC-12/13 |
 | README/GoDoc/AGENTS 基线同步 | AC-01、12、13；不授权改变 constitution |
 
 `final_acceptance_checks` 只有 T036：依赖全部五个 Plan 的本地交付；缺少真实调用、提交授权或材料时状态为 BLOCKED，不能 PASS。
 
-### 7.6 资源预算与冲突门禁 / Budget and Conflict Gate
+### 7.7 资源预算与冲突门禁 / Budget and Conflict Gate
 
-EVM-CONTRACT-v1/T025 修订沿用最多 70 分钟：规划 20 分钟、Coder 20 分钟、验证与固定 Auditor 最多 30 分钟，不按比例换算或延长工时。当前四个声明文件已有 151 行；按 §3.2 完整字段/方法估计约 200–240 行，预警改为 ≤240 骨架行，仍不得包含行为实现。六测试文件当前 946 行，优先删重复并保持 ≤1,100 测试行；行数是预警而非目标。十路径不变，无额外文档/工具文件；不授权或启动 T026，不改其他已批准 Task 的预算。
+EVM-RAW-DTO-v1/T025–T026 统一采用 §3.2 的 20/20/30 分钟共享时箱与行数预警，替代此前 EVM 声明骨架和小时预算。T025 原十路径不扩大且本轮仅写六测试文件；T026 原七生产路径不变。
+
+RAW-ERROR-v1 增量共享规划 20 分钟、生产编码 20 分钟、测试执行与独立审核 30 分钟时箱，覆盖 T017–T022 及 T025/T026 中本次错误契约增量，不按 Task 重置。预计增量生产代码约 120–220 行、测试代码约 220–400 行，均在既有路径内；EVM 原始 DTO 工作单独记账，同一工作不得重复计费。时箱耗尽时保留快照并报告，不新增 Task、不弱化断言、不自动延长。
 
 HARNESS-CONTRACT-v1 的 T023、T024 各自最多 70 分钟：规划 20 分钟、编码 20 分钟、验证最多 30 分钟。该时间是实际执行上限，不再套用 40%/5%/55% 的机械小时换算。任务总数仍为 20；生产行、测试行和文件数只作为范围漂移预警，不是目标额度，也不得成为延长工期、增加抽象或重复验证的理由。
 
-`docs/architecture.md` 中仍存在与 constitution 8.6 不一致的小 DTO 指针、`(nil,nil)` 与原始错误示意。`PLAN-v6` 只批准在三件套明确冻结的值字段和存在性状态方向；其他冲突在对应 Task 开始前必须逐项说明并由 Human 决定，不能由 Coder 自行扩大例外。
-
-本方案 §3.1 与 §4 是 `PLAN-v6` 对 `docs/architecture.md` §7.2–7.4、§10.1 中相应签名和错误字段的替代设计。旧文档的指针示例、nullable `(nil,nil)` 示例及原始错误字段不得作为实施授权。Human 对 `PLAN-v6` 的明确批准同时裁决上述已列冲突；除这些替换外，不扩大、弱化或推定任何 constitution 例外。架构文档的文字同步须另取得路径授权。
+`docs/architecture.md` v0.4 是历史设计草案。其 §10.1 原始错误方向与 RAW-ERROR-v1 一致，但具体字段、值接收者、HTTP body、Error() 与 Cause 语义以本方案 §4 为准；草案的 `*Error`/`*int` 不恢复。§7.2–7.4 的指针/nullable 与 §12.5 摘要仍由既有批准条款覆盖。本轮只修改 constitution 与三件套，不同步 architecture，也不把该路径偷偷放入 T035。
 
 ## 8. 验证命令
 
@@ -598,6 +810,6 @@ CHAIN_API_GO_LIVE_TEST=1 CHAIN_API_GO_LIVE_BROADCAST=1 go test ./internal/test/l
 - Planner：`gpt-6-astra / high`，只读规划。
 - Coder：`gpt-6-astra / low`，只能修改获批 Task 的路径。
 - Auditor：固定 `gpt-5.6-sol / medium`，必须是全新只读上下文；当前运行时未提供该模型时不得静默替换。
-- Human：既有 PLAN-v6、CONTEXT-CAUSE-v1、HARNESS-CONTRACT-v1、EVM-CONTRACT-v1 与 T017–T026 批准保持有效；T027 可进入 RED → 固定 Auditor → T027 Human 门禁，既有角色和最终 Human 门禁不变。
+- Human：EVM-RAW-DTO-v1 与 RAW-ERROR-v1 四文件、constitution 1.3 已批准。当前只恢复 T017；T017–T022 与 T025/T026 依既有 RED、Auditor、Human 门禁推进，T023/T024 保持完成。BITCOIN-CONTRACT-v1 与 T027 继续暂停；没有真实 RPC、广播、提交、推送或 PR 授权。
 
-T017–T026 已有效通过。T027 可进入 Bitcoin 测试 RED；当前没有真实 RPC 或交易提交授权。
+T017/T018 已完成门禁并获准集成；当前无活动实现任务。仍为 5 Plan / 20 Task，T019 及以后任务未授权，T027 继续暂停。
