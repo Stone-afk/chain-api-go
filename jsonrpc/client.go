@@ -46,7 +46,7 @@ type Client struct {
 // New validates and copies configuration without performing I/O.
 func New(cfg Config, doer transport.HTTPDoer) (*Client, error) {
 	invalid := apierror.Error{Kind: apierror.Configuration}
-	if isNil(doer) || cfg.MaxResponseBytes <= 0 || (cfg.Version != V2 && cfg.Version != Bitcoin) {
+	if doer == nil || cfg.MaxResponseBytes <= 0 || (cfg.Version != V2 && cfg.Version != Bitcoin) {
 		return nil, invalid
 	}
 	u, err := url.Parse(cfg.Endpoint)
@@ -79,7 +79,7 @@ func (c *Client) Call(ctx context.Context, method string, params any, result any
 func (c *Client) RawCall(ctx context.Context, method string, params any, result any) error {
 	e := apierror.Error{Kind: apierror.InvalidArgument, Method: method}
 	rv := reflect.ValueOf(result)
-	if isNil(ctx) || strings.TrimSpace(method) == "" || !rv.IsValid() || rv.Kind() != reflect.Pointer || rv.IsNil() || !rv.Elem().CanSet() {
+	if ctx == nil || strings.TrimSpace(method) == "" || !rv.IsValid() || rv.Kind() != reflect.Pointer || rv.IsNil() || !rv.Elem().CanSet() {
 		return e
 	}
 	encoded, err := json.Marshal(params)
@@ -112,7 +112,7 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	resp, err := c.doer.Do(req)
 	if resp != nil {
 		e.HTTPStatus = resp.StatusCode
-		if !isNil(resp.Body) {
+		if resp.Body != nil {
 			defer resp.Body.Close()
 		}
 	}
@@ -127,7 +127,7 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		e.Kind = apierror.HTTP
 	}
-	if isNil(resp.Body) {
+	if resp.Body == nil {
 		return e
 	}
 	// Read at most the limit plus one byte, without overflowing an int64 limit.
@@ -177,18 +177,6 @@ func (c *Client) RawCall(ctx context.Context, method string, params any, result 
 	}
 	rv.Elem().Set(temporary.Elem())
 	return nil
-}
-
-func isNil(v any) bool {
-	if v == nil {
-		return true
-	}
-	r := reflect.ValueOf(v)
-	switch r.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return r.IsNil()
-	}
-	return false
 }
 
 func headerNameValid(name string) bool {

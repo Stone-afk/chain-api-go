@@ -133,12 +133,11 @@ func edited(raw, key, value string) string {
 	return string(b)
 }
 func TestEVMNew(t *testing.T) {
-	var n *rpcFake
 	for _, tc := range []struct {
 		name  string
 		rpc   jsonrpc.Caller
 		valid bool
-	}{{"nil", nil, false}, {"typed-nil", n, false}, {"valid", &rpcFake{reply: `"0x1"`}, true}} {
+	}{{"nil", nil, false}, {"valid", &rpcFake{reply: `"0x1"`}, true}} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, e := New(tc.rpc)
 			if f, ok := tc.rpc.(*rpcFake); ok && f != nil {
@@ -159,6 +158,14 @@ func TestEVMNew(t *testing.T) {
 			equal(t, v.String(), "1")
 			equal(t, tc.rpc.(*rpcFake).calls, 1)
 		})
+	}
+}
+
+func TestEVMNewDoesNotInspectTypedNilCaller(t *testing.T) {
+	var rpc *rpcFake
+	c, err := New(rpc)
+	if err != nil || c == nil {
+		t.Fatalf("typed-nil caller was defensively rejected: client=%v error=%v", c, err)
 	}
 }
 func TestQueryWireAndValues(t *testing.T) {

@@ -85,16 +85,13 @@ func checkError(t *testing.T, err error, kind apierror.Kind, method string, stat
 }
 
 func TestNewRejectsInvalidConfigurationWithoutIO(t *testing.T) {
-	for _, name := range []string{"nil-doer", "typed-nil-doer", "empty-endpoint", "relative", "scheme", "missing-host", "bad-escape", "fragment", "zero-limit", "negative-limit", "header-name", "header-value"} {
+	for _, name := range []string{"nil-doer", "empty-endpoint", "relative", "scheme", "missing-host", "bad-escape", "fragment", "zero-limit", "negative-limit", "header-name", "header-value"} {
 		t.Run(name, func(t *testing.T) {
 			cfg, calls := config(), 0
 			var d transport.HTTPDoer = doerFunc(func(*http.Request) (*http.Response, error) { calls++; return nil, nil })
 			switch name {
 			case "nil-doer":
 				d = nil
-			case "typed-nil-doer":
-				var p *http.Client
-				d = p
 			case "empty-endpoint":
 				cfg.Endpoint = ""
 			case "relative":
@@ -130,6 +127,14 @@ func TestNewRejectsInvalidConfigurationWithoutIO(t *testing.T) {
 				t.Errorf("invalid constructor client=%v calls=%d", c != nil, calls)
 			}
 		})
+	}
+}
+
+func TestNewDoesNotInspectTypedNilDoer(t *testing.T) {
+	var doer *http.Client
+	c, err := httpjson.New(config(), doer)
+	if err != nil || c == nil {
+		t.Fatalf("typed-nil doer was defensively rejected: client=%v error=%v", c, err)
 	}
 }
 
@@ -253,7 +258,7 @@ func TestInvalidArgumentsAndUnsafePathsDoNoIO(t *testing.T) {
 
 func TestResponseBoundariesAndResources(t *testing.T) {
 	for _, raw := range []bool{false, true} {
-		for _, name := range []string{"ok", "exact-limit", "over-limit", "empty", "malformed", "trailing", "decode", "http", "http-over-limit", "http-malformed", "read", "transport", "response-and-error", "nil-response", "nil-body", "typed-nil-body"} {
+		for _, name := range []string{"ok", "exact-limit", "over-limit", "empty", "malformed", "trailing", "decode", "http", "http-over-limit", "http-malformed", "read", "transport", "response-and-error", "nil-response", "nil-body"} {
 			t.Run(fmt.Sprintf("raw=%v/%s", raw, name), func(t *testing.T) {
 				cfg, calls, status := config(), 0, 200
 				payload, want := `{"n":7,"s":"ok"}`, apierror.Protocol
@@ -305,11 +310,6 @@ func TestResponseBoundariesAndResources(t *testing.T) {
 					resp := &http.Response{StatusCode: status, Body: b}
 					if name == "nil-body" {
 						resp.Body = nil
-						return resp, nil
-					}
-					if name == "typed-nil-body" {
-						var p *trackedBody
-						resp.Body = p
 						return resp, nil
 					}
 					obtained = true

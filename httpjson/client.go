@@ -35,7 +35,7 @@ type Client struct {
 // New validates and copies configuration without performing I/O.
 func New(cfg Config, doer transport.HTTPDoer) (*Client, error) {
 	invalid := apierror.Error{Kind: apierror.Configuration}
-	if isNil(doer) || cfg.MaxResponseBytes <= 0 {
+	if doer == nil || cfg.MaxResponseBytes <= 0 {
 		return nil, invalid
 	}
 	u, err := url.Parse(cfg.Endpoint)
@@ -75,7 +75,7 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	}
 	e.Method = path
 	rv := reflect.ValueOf(result)
-	if isNil(ctx) || !rv.IsValid() || rv.Kind() != reflect.Pointer || rv.IsNil() || !rv.Elem().CanSet() {
+	if ctx == nil || !rv.IsValid() || rv.Kind() != reflect.Pointer || rv.IsNil() || !rv.Elem().CanSet() {
 		return e
 	}
 	payload, err := json.Marshal(request)
@@ -106,7 +106,7 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	resp, err := c.doer.Do(req)
 	if resp != nil {
 		e.HTTPStatus = resp.StatusCode
-		if !isNil(resp.Body) {
+		if resp.Body != nil {
 			defer resp.Body.Close()
 		}
 	}
@@ -120,7 +120,7 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		e.Kind = apierror.HTTP
 	}
-	if isNil(resp.Body) {
+	if resp.Body == nil {
 		return e
 	}
 	// A separate detection byte avoids overflow when the limit is MaxInt64.
@@ -173,18 +173,6 @@ func safePath(path string) bool {
 		}
 	}
 	return true
-}
-
-func isNil(v any) bool {
-	if v == nil {
-		return true
-	}
-	r := reflect.ValueOf(v)
-	switch r.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return r.IsNil()
-	}
-	return false
 }
 
 func headerNameValid(name string) bool {

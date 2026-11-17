@@ -54,7 +54,7 @@ func TestNewLocalValidation(t *testing.T) {
 		valid bool
 	}{
 		{"valid", chainID(56), &fakeCaller{}, true}, {"nil", chainID(56), nil, false},
-		{"typed-nil", chainID(56), typedNil, false}, {"zero", chainID(0), &fakeCaller{}, false}, {"negative", chainID(-1), &fakeCaller{}, false},
+		{"typed-nil", chainID(56), typedNil, true}, {"zero", chainID(0), &fakeCaller{}, false}, {"negative", chainID(-1), &fakeCaller{}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, e := New(Config{ExpectedChainID: tc.id}, tc.rpc)

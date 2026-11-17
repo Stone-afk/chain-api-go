@@ -5,32 +5,20 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+
 	"github.com/Stone-afk/chain-api-go/apierror"
 	"github.com/Stone-afk/chain-api-go/jsonrpc"
-	"reflect"
 )
 
 type Client struct{ rpc jsonrpc.Caller }
 
 func New(rpc jsonrpc.Caller) (*Client, error) {
-	if isNilInterface(rpc) {
+	if rpc == nil {
 		return nil, apierror.Error{Kind: apierror.Configuration}
 	}
 	return &Client{rpc: rpc}, nil
 }
 func invalid() error { return apierror.Error{Kind: apierror.InvalidArgument} }
-func isNilInterface(value any) bool {
-	if value == nil {
-		return true
-	}
-	v := reflect.ValueOf(value)
-	switch v.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return v.IsNil()
-	default:
-		return false
-	}
-}
 func (c *Client) invoke(ctx context.Context, method string, params []any, submission bool) (json.RawMessage, error) {
 	var raw json.RawMessage
 	if err := c.rpc.Call(ctx, method, params, &raw); err != nil {

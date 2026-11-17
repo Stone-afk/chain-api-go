@@ -97,14 +97,12 @@ func response(body string) *http.Response {
 }
 
 func TestNewRejectsInvalidConfigurationWithoutIO(t *testing.T) {
-	var pointer *nilDoer
-	var function doerFunc
 	for _, tc := range []struct {
 		name   string
 		change func(*jsonrpc.Config)
 		d      transport.HTTPDoer
 	}{
-		{"nil", nil, nil}, {"typed-nil-pointer", nil, pointer}, {"typed-nil-function", nil, function},
+		{"nil", nil, nil},
 		{"empty-endpoint", func(c *jsonrpc.Config) { c.Endpoint = "" }, nil},
 		{"relative-endpoint", func(c *jsonrpc.Config) { c.Endpoint = "/rpc" }, nil},
 		{"unsupported-scheme", func(c *jsonrpc.Config) { c.Endpoint = "file:///rpc" }, nil},
@@ -128,6 +126,22 @@ func TestNewRejectsInvalidConfigurationWithoutIO(t *testing.T) {
 			errorFields(t, kind(t, err, apierror.Configuration), "", 0, 0, false)
 			if calls != 0 {
 				t.Errorf("constructor Do count = %d", calls)
+			}
+		})
+	}
+}
+
+func TestNewDoesNotInspectTypedNilDoer(t *testing.T) {
+	var pointer *nilDoer
+	var function doerFunc
+	for _, tc := range []struct {
+		name string
+		doer transport.HTTPDoer
+	}{{"pointer", pointer}, {"function", function}} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := jsonrpc.New(config(), tc.doer)
+			if err != nil || c == nil {
+				t.Fatalf("typed-nil doer was defensively rejected: client=%v error=%v", c, err)
 			}
 		})
 	}
