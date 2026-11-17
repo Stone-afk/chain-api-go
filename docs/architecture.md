@@ -1,10 +1,38 @@
 # chain-api-go 架构与技术方案
 
-版本：v0.4 · 日期：2026-11-16 · 状态：设计草案，供评审
+版本：v0.5 · 日期：2026-11-18 · 状态：PLAN-v8-NATIVE-SDK-v1 离线迁移与独立审计已完成；T036 真实验收保持 BLOCKED
 
 项目：`github.com/Stone-afk/chain-api-go`
 
-本文定义 SDK 的目标、约束、包结构、依赖注入方式、API 设计及验证要求。代码片段是拟议 API 与设计示例，尚未实现或通过编译验证。本文不代表已有功能，也不授权启动 SDK 实现。
+本文记录 SDK 架构及其历史设计。当前实施权威是 constitution 1.5 和 docs/superpowers/001-chain-api-go 的 PLAN-v8-NATIVE-SDK-v1 三件套。下方 §0 定义当前原生 SDK 迁移；其后的旧 EVM/Solana API、DTO 和依赖图只保留为历史背景，遇到冲突以 §0 和三件套为准。Bitcoin、Tron 与公共协议的未变更边界仍有效。本文件不把待执行的迁移或真实验收表述为已经完成。
+
+## 0. 当前原生 SDK 迁移架构 / Native SDK Migration
+
+```text
+宿主显式提供 jsonrpc.Caller
+  ↑
+既有 jsonrpc / transport：真实 endpoint、Header、HTTP 生命周期和响应限制
+  ↑
+私有协议桥接：只转接 Caller；保留原始错误；不独立联网
+  ↑
+go-ethereum ethclient/rpc 或 solana-go/v2 rpc client（私有字段）
+  ↑
+evm / ethereum / bnb / solana 项目受限客户端
+  ↑
+业务直接调用具体链客户端
+```
+
+固定依赖为 go-ethereum v1.17.10、solana-go/v2 v2.3.0，module 最低 Go 1.26.0。Bitcoin、Tron、apierror、jsonrpc、httpjson 和 transport 不迁移、不重构。没有统一链入口、注册表或 dispatcher。
+
+EVM 高层查询与计算委托 ethclient，公开 common、core/types 和 ethereum 原生类型；唯一提交入口接收已编码十六进制字符串并使用私有 rpc.Client 调用 eth_sendRawTransaction 一次。Ethereum/BNB 保留显式 ExpectedChainID 与 ValidateNetwork，并可嵌入本项目受限 evm.Client；不得嵌入完整上游 client。
+
+Solana 高层方法委托原生 rpc.Client，公开 solana/rpc 原生类型；提交入口使用 SendEncodedTransactionWithOpts，模拟入口使用 SimulateRawTransactionWithOpts，不接受待构造或待签名的交易对象。
+
+EVM 的私有 RoundTripper 只在内存中解析上游请求、调用注入 Caller、构造成功响应；Caller 失败沿 Go error 链返回，不重新序列化成会丢失原始 data/body/Cause 的上游错误信封。Solana 私有 JSONRPCClient 实现仅支持批准路径使用的 CallForInto；其他必须实现的方法明确 Unsupported，零 Caller/网络调用。
+
+原始错误、单次提交、零隐式重试、零后台行为继续生效。原生查询的 null、默认编码、指针、错误哨兵及完整区块附加叔块查询属于明确接受的契约变化；不得补回自研 DTO 或旧 API 兼容层。原生依赖中未被调用的签名能力不构成项目 API，但必须审查项目调用路径。
+
+精确 API、桥接、integration runner、预算和验证见 [plan §10](superpowers/001-chain-api-go/plan.md#10-plan-v8-native-sdk-v1-冻结实施契约)，验收见 [spec §8](superpowers/001-chain-api-go/spec.md#8-plan-v8-native-sdk-v1-原生-sdk-迁移)，任务见 [tasks §8](superpowers/001-chain-api-go/tasks.md#8-plan-v8-native-sdk-v1-活动任务)。
 
 ## 1. 项目定位
 
@@ -532,7 +560,7 @@ flowchart LR
 
 ### 12.5 样本清单与断言规则
 
-拟将不含凭据的样本清单保存到 `internal/test/live/testdata/<chain>/samples.json`，每个样本至少包含：
+拟将不含凭据的样本清单保存到 `internal/test/integration/testdata/<chain>/samples.json`，每个样本至少包含：
 
 | 字段 | 含义 |
 | --- | --- |

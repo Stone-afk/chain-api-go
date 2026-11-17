@@ -27,7 +27,18 @@ go.work.sum
 
 # env file
 .env
+.idea/
 
+# Editor/IDE
+# .idea/
+# .vscode/
+docs/
+docs/superpowers
+
+.superpowers/
+.cursor/
+.codex/
+.claude/
 # Editor/IDE
 # .idea/
 # .vscode/

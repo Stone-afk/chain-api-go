@@ -3,14 +3,18 @@
 **规格文档 / Spec**：[spec.md](spec.md)  
 **技术方案 / Plan**：[plan.md](plan.md)  
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
-**基线版本 / Baseline Version**：PLAN-v7-REMAINING-RAW-v1
+**基线版本 / Baseline Version**：PLAN-v8-NATIVE-SDK-v1
 **日期 / Date**：2026-11-17
-**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T028 已完成并集成；T029–T036 暂停 / T029 not authorized
+**状态 / Status**：T037–T042 已完成离线实施、验证与独立审计；T036 保持 `BLOCKED`；等待 Human 最终验收
+
+> 当前权威范围：本轮迁移以 spec §8、plan §10、tasks §8 为准。它们替代旧文档中 EVM/Solana 自研 API、DTO、Has/present 规则、依赖禁令、相关 runner 字典和逐 Task 人工停顿要求；未涉及的 Bitcoin、Tron、jsonrpc、httpjson、原始错误、安全输出和真实验收规则继续有效。旧版本条目及 T017–T035 是历史证据，不代表新原生依赖基线已经通过验证。历史已完成任务不计入本轮活动清单。活动工作为两个功能 Plan、六个迁移 Task，另有未获真实执行授权的 T036。
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
+| PLAN-v8-NATIVE-SDK-v1 | 2026-11-17 | Human 明确批准 NATIVE-SDK-GOVERNANCE-v1，授权依本候选连续规划、实施和独立审计。固定 go-ethereum v1.17.10、solana-go/v2 v2.3.0、Go 1.26；以私有持有上游 client 的受限封装替换 EVM/Ethereum/BNB 和 Solana 自研高层方法及类型，不提供兼容层。保持原始错误契约，批准两种私有最小协议桥接及仅限固定依赖的原生指针/转换例外。constitution 升至 1.5；AC-13 改为项目公开 API 和实际调用路径审查。本轮复用 PLAN-002、PLAN-004，新增稳定 Task T037–T042；原已完成 Task 仅作历史，T036 继续 BLOCKED。保留现有 internal/test/integration 迁移，不授权真实 RPC、广播、Git 操作或发布。 |
+| PARALLEL-v1 | 2026-11-17 | Human 已授权：仅把 T031 的调度依赖由 T030 改为 T028，允许 T029∥T031 RED 及其独立门禁后的 T030∥T032 GREEN；T033 的全链依赖与 T033→T034→T035→T036 保持不变。剩余审计统一使用 `gpt-6.1-sol / medium` 全新只读上下文。保持 5 Plan/20 Task、全部 Scope/API/验收/预算与 RED/GREEN 门禁；不授权真实 RPC、浏览器采集、广播或 Git 发布/集成。 |
 | PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027/T028 已完成 RED/GREEN、独立 Auditor 与 Human 门禁并获准集成；T029 明确暂停。真实 RPC 与广播仍未授权。 |
 | RAW-ERROR-v1 | 2026-11-17 | Human 已批准：恢复原始节点 Message/Data、HTTP 错误正文及底层 Cause；区分 SDK 返回与 live 脱敏输出。重开 T017–T022，修订 T025/T026；T025 当前 RED/审核不能作为新基线门禁。T023/T024 未受影响证据保留，SDK→harness 输出隔离在 T033/T034 验证。保持 5 Plan / 20 Task、T017–T036 ID 与原路径；T027 继续暂停。constitution 1.3 同时获批；T017/T018 已完成门禁并获准集成，T019 未授权。 |
 | EVM-RAW-DTO-v1 | 2026-11-17 | Human 已批准：将 EVM 收敛为原始 RPC DTO + 必要转换，接受破坏性 API 变更且不提供兼容层；重开 T025/T026，旧证据 stale。T025 可进入 RED，T026 仍等待审核和 Human 门禁；Bitcoin 候选暂停。保持 5 Plan / 20 Task、路径和依赖，不改 constitution。 |
@@ -35,8 +39,8 @@
 | C-05 | SDK 默认不重试、不切换节点、不轮询、不缓存、不记录敏感日志。 |
 | C-06 | 构造函数只做本地校验，不联网、不创建后台 goroutine；共享 HTTP transport 的生命周期归调用方。 |
 | C-07 | 交易提交接口只发送调用方提供的链原生序列化载荷一次，不修改、不重建、不自动补发。 |
-| C-08 | 命名常量类型按底层类型提供明确转换方法：`string` → `ToString()`、`int` → `ToInt()`、`int32` → `ToInt32()`、`int64` → `ToInt64()`；其他底层类型遵循同一规则。 |
-| C-09 | 小字段、小结构体及其参数、返回值和构造器传参使用值语义。仅复杂生命周期实现对象可使用指针；不得借此批量改写既有指针或破坏数据库 `NULL`、第三方 API 契约，冲突必须交由用户决定。 |
+| C-08 | 命名常量类型按底层类型提供明确转换方法：`string` → `ToString()`、`int` → `ToInt()`、`int32` → `ToInt32()`、`int64` → `ToInt64()`；其他底层类型遵循同一规则。固定原生依赖仅适用 constitution 8.7 的限定例外。 |
+| C-09 | 小字段、小结构体及其参数、返回值和构造器传参使用值语义。仅复杂生命周期实现对象可使用指针；不得借此批量改写既有指针或破坏数据库 `NULL`、第三方 API 契约，冲突必须交由用户决定。固定原生依赖仅适用 constitution 8.7 的限定例外。 |
 | C-10 | 核心 SDK 不接收私钥，不构造、编码或签名交易，不调用节点签名或解锁接口。`go-wallet-sdk` 若用于说明组合，只能位于独立示例 module，且示例默认离线、不得默认广播或包含真实凭据。本约束是技术隔离边界，不是钱包业务职责。 |
 
 ## 3. 功能范围
@@ -68,15 +72,15 @@ Tron 的五个 solidified 查询为 Account、NowBlock、BlockByNum、Transactio
 | AC-02 | 构造函数在单一注入边界拒绝 nil 依赖和本契约明确列出的非法配置，零网络 I/O；不反射探测接口内部 typed-nil。方法仅验证各链契约明确列出的请求输入。调用方须提供有效非 nil context；链层不重复协议层 context 检查，不保护未经构造的零值 Client。 |
 | AC-03 | JSON-RPC/HTTP JSON 正确处理 ID、HTTP 状态、错误信封、超限响应、取消和 body 关闭；没有隐式重试。 |
 | AC-04 | SDK 返回的结构化错误保留原始节点 Message/Data、数字或字符串错误码、HTTP 错误响应正文和底层 Cause；`errors.Is/As` 不因 SDK 包装丢失原错误语义。SDK 不主动附加 Header、凭据或完整请求/交易载荷，不按英文 message 猜测分类；调用层负责业务映射、返回、重试及脱敏。live 报告、fixture 和证据仍按安全输出契约脱敏。精确验收见 RE-01–RE-08。 |
-| AC-05 | Ethereum 与 BNB 分别完成全部查询、计算、提交契约及网络身份检查。 |
+| AC-05 | Ethereum 与 BNB 通过 §8 和 plan §10 的固定 go-ethereum 原生查询、计算、已编码载荷提交与显式网络身份检查；旧 EVM 自研 DTO/API 不再是活动契约。 |
 | AC-06 | Bitcoin 金额不经过浮点，历史查询前提、null 和节点拒绝保持原义。 |
-| AC-07 | Solana 保留 commitment、context slot、legacy/v0、meta、blockhash 有效高度及提交选项。 |
+| AC-07 | Solana 通过 §8 和 plan §10 的固定 solana-go/v2 原生 API；保留上游 commitment、context、legacy/v0、meta、blockhash 有效高度、nullable 和提交选项语义，不添加旧 DTO 兼容层。 |
 | AC-08 | Tron 正确处理地址编码、visible、空账户、HTTP 200 内链错误、资源单位与 solidified 状态。 |
 | AC-09 | 普通测试零公网；真实 live 入口仅在显式启用后读取指定外部配置与材料。测试装配按 plan §7.2 HARNESS-CONTRACT-v1 实现严格路径/env 引用解析、原始字节 SHA-256、请求数、可取消并发等待、开始间隔和真实 deadline context；独立必需目录与 FAIL 优先账本禁止漏跑、阻塞或错误被 PASS 掩盖。关闭开关零配置读取、零材料读取、零请求 I/O。 |
 | AC-10 | 每链至少采集 3 笔区块链浏览器真实交易，先以用户账号 RPC 独立预检查，再通过 SDK 逐字段核对；不得用公共 RPC 冒充用户账号或用 SDK 自己生成全部预期。 |
 | AC-11 | 五链提交验收必须独立授权并使用测试网或受控节点及专用交易载荷；任一材料缺失均记为 BLOCKED。 |
-| AC-12 | API 审核确认命名常量具有匹配底层类型的 `To<Type>()` 方法，新增或触及的小字段/小结构体遵循值语义；契约冲突必须有用户决定。 |
-| AC-13 | 核心公开 API 和依赖图不存在私钥、交易构造、编码、签名或节点解锁能力；若存在说明性 `go-wallet-sdk` 示例，其 module 隔离、默认离线且无真实凭据。 |
+| AC-12 | 项目自有类型遵守命名转换和值语义规则；固定原生依赖仅按 constitution 8.7 保留第三方契约。任何未覆盖冲突必须交 Human 决定。 |
+| AC-13 | 审查项目自行声明的公开 API 和实际调用路径：不存在私钥输入、交易构造、交易对象编码、签名、节点解锁或完整上游 client 暴露。固定依赖包含的未调用能力及返回原生 DTO 在上游定义的方法按 constitution 5.4 处理。说明性 go-wallet-sdk 示例仍须 module 隔离、默认离线且无真实凭据。 |
 
 ### 4.1 值语义与契约冲突裁决 / Value Semantics and Contract Decisions
 
@@ -118,7 +122,7 @@ ER-04 明确替代旧 EC-02/04 的“所有必需字段缺失或坏格式一律 
 
 是否已发布或已有外部使用者未知。类型底层表示、DTO 字段及 Has/Parse API 删除属于破坏性变化；不假定“尚未发布所以安全”，不自动添加兼容层。
 
-本段关于 stale/reopened 的描述是 EVM-RAW-DTO-v1 与 RAW-ERROR-v1 提出时的历史过程。当前以 PLAN-v7-REMAINING-RAW-v1 状态为准：T017–T026 已完成并集成，相关快照证据不重跑；T027–T036 未启动，真实验收仍只在另行授权的 T036。
+本段关于 stale/reopened 的描述是 EVM-RAW-DTO-v1 与 RAW-ERROR-v1 提出时的历史过程。当前以 PLAN-v7-REMAINING-RAW-v1+PARALLEL-v1 状态为准：T017–T035 已完成离线实现、验证与独立审计；T036 真实验收因缺少授权和材料保持 `BLOCKED`。
 
 ### 4.3 剩余链原始 DTO 契约 / Remaining Native DTO Contracts（候选）
 
@@ -149,7 +153,7 @@ BITCOIN-CONTRACT-v1 从未获批，其严格解析设计由本候选替代。Bit
 | LR-05 | 原始 SDK error 仅在内存断言；证据不序列化原始错误、配置或载荷。read.json 为固定 suiteReport JSON，broadcast.json 为追加式 claim/report JSON Lines；精确字段见 plan §7.8，不新增证据路径。 | AC-04/09，RE-08；T033→T036 |
 | LR-06 | harness 的限额、deadline、账本原样复用，不新增调度、重试或后台 worker。 | AC-09；T033→T034 |
 
-本候选不增加链级 Raw 入口、网络探测、钱包/签名能力、依赖、默认客户端或重试。每个测试 Task 完成后仍须固定 Auditor 与 Human 门禁，对应实现 Task 不自动启动。五链真实验收只在另行授权的 T036 执行。
+本候选不增加链级 Raw 入口、网络探测、钱包/签名能力、依赖、默认客户端或重试。每个测试 Task 完成后仍须固定 Auditor 与 Human 门禁，对应实现 Task 不自动启动。PARALLEL-v1 只调整独立任务的执行波次，具体依赖与授权来源见 plan §5/§9，不改变本节任何行为验收。五链真实验收只在另行授权的 T036 执行。
 
 ### 4.4 RAW-ERROR-v1 验收 / Raw Error Acceptance（已批准）
 
@@ -223,4 +227,58 @@ T023/T024 仅建立测试装配基础，不读取真实凭据、不执行真实 
 
 C-01–C-10 是所有活动 Task 的不变量；C-08/C-09/C-10 分别由 AC-12/AC-12/AC-13 验收。真实验收只在 T036 执行，离线通过不得表述为 AC-10/AC-11 已通过。
 
-当前状态：PLAN-v7-REMAINING-RAW-v1 已获 Human 批准；T017–T028 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成。T029–T036 暂停，未获实施授权。BITCOIN-CONTRACT-v1 从未获批，其内容已由 PLAN-v7 替代。真实数据、账号 RPC 和受控提交仍延后至 T036 且须另获具体授权；推送、PR 与真实 RPC/广播仍未授权。
+历史状态（PLAN-v7）：T017–T035 已完成对应离线 RED/GREEN、验证和独立 Auditor 门禁。BITCOIN-CONTRACT-v1 从未获批，其内容已由 PLAN-v7 替代。T036 的真实数据、浏览器采集、账号 RPC 和受控提交仍须另获具体授权并提供完整材料，当前为 `BLOCKED`；推送、PR 与真实 RPC/广播仍未授权。当前权威状态见文首及 §8。
+
+## 8. PLAN-v8-NATIVE-SDK-v1 原生 SDK 迁移
+
+### 8.1 输入、目标与兼容性
+
+Human 已批准 NATIVE-SDK-GOVERNANCE-v1，要求 EVM/Ethereum/BNB 改用 go-ethereum，Solana 直接改用 solana-go/v2，不做试点、不保留兼容层。迁移目标是删除项目重复维护的高层请求/响应类型和 RPC 组装逻辑，同时保留库形态、显式 DI、原始错误和已编码载荷提交边界。
+
+固定版本为 go-ethereum v1.17.10、solana-go/v2 v2.3.0；go.mod 使用 go 1.26.0。不追随 main/latest，不添加 replace/fork。升级或增加直接依赖须另行审批。
+
+场景：
+1. 宿主注入已有 jsonrpc.Caller，直接创建 Ethereum/BNB/Solana 客户端；构造不发请求，链查询返回固定上游原生类型。
+2. 宿主提供已签名且已编码的载荷；客户端只提交一次，返回原生 hash/signature，保留拒绝和结果未知差异。
+3. Caller 返回原始节点错误或底层错误；调用方通过 errors.As/Is 仍能取得原始字段和 Cause。
+4. 普通测试用 fake 或本地 httptest 验证 native→bridge→Caller→jsonrpc 的路径，不访问公网。
+5. 现有 integration 入口继续默认关闭；材料字典迁移不构成真实执行授权。
+
+破坏性变化：旧 EVM/Solana 自研 DTO、枚举、Has 字段、present 返回值、旧方法名及其测试预期删除；采用 plan §10 的唯一 API。第三方原生 pointer/null/default/NotFound 语义生效。Bitcoin、Tron 和公共协议 API 不变。
+
+### 8.2 新增验收
+
+| ID | 需求与具体 Case | 主要证据 |
+|---|---|---|
+| NS-01 | 固定直接依赖和 Go 1.26；公开方法、参数和返回类型逐项符合 plan §10；不存在旧 DTO 别名、旧方法转发或完整上游 client 暴露。 | go.mod/go.sum、原生接口断言、API/调用路径审查 |
+| NS-02 | evm.New、ethereum.New、bnb.New、solana.New 仅直接检查 nil 接口及既有明确配置；零 Caller/HTTP/节点调用，无 env/file/config 读取、默认网络 transport 或后台 goroutine。geth 内部 crypto/rand 熵读取单独披露，不宣称绝对零 I/O。 | fake Caller 计数、构造路径审查、无默认 transport 测试 |
+| NS-03 | EVM 十三个高层方法委托固定 ethclient；原生 hex quantity、CallMsg、FilterQuery、FeeHistory、完整区块、pending bool、ethereum.NotFound 和原生类型保持上游语义。完整区块含叔块时允许一次块查询加按序叔块查询。 | 表格单元测试、完整块/叔块 fixture、原生错误断言 |
+| NS-04 | EVM SendRawTransaction 原样发送合法非空十六进制载荷一次，返回 common.Hash；本地非法载荷零请求；节点拒绝不是结果未知；进入提交后的非节点拒绝错误及无效/零 hash 标记结果未知。 | 载荷、次数、拒绝/传输/解码/零 hash 测试 |
+| NS-05 | Solana 十一个批准方法使用原生参数和结果；保留 Get*WithOpts、显式零指针、context、legacy/v0、nullable、ErrNotFound/ErrNotConfirmed 和上游默认值。模拟只接收已序列化字节。 | 表格测试、legacy/v0/null fixture、精确 wire 断言 |
+| NS-06 | Solana SendEncodedTransactionWithOpts 原样提交调用方编码字符串一次；编码为空按上游 base64 默认，支持 base64/base58；保留 SkipPreflight/PreflightCommitment/MaxRetries/MinContextSlot。非法输入零请求，无效/零 signature 与提交后不确定错误标记结果未知。 | 载荷、选项、一次调用、拒绝/未知测试 |
+| NS-07 | 两种桥接私有且不联网；原始 apierror 字段和底层 errors.Is/As 可达，合成 URL 不含配置；未支持的 Solana callback/batch 返回 Unsupported 且零调用。不得通过错误信封重编码丢失 raw data、HTTP body 或 Cause。 | 原始错误合成标记、body/data 字节、cause 链、unsupported 测试 |
+| NS-08 | integration 的 EVM/Solana native 方法目录、材料字典和断言同步迁移；每次真实 Caller 调用恰好消耗一次请求预算，包括 EVM 叔块读取；预算不足为 BLOCKED 且不额外发请求。开关关闭仍零读取/零请求。Bitcoin/Tron 行为不变。 | read/submission contract 测试、三调用/二预算 fixture、默认关闭回归 |
+
+NS-01/02/07 同时服务两个功能 Plan。原 AC-01–04、AC-06、AC-08–11、RAW-ERROR-v1 仍有效；AC-05/07/12/13 按本次修订生效。原 ER 和 Solana SC 条款仅在被本章替代部分成为历史，不扩大其他链变更范围。
+
+### 8.3 最小使用方式
+
+EVM：宿主先构造 jsonrpc.Caller，再用 ethereum.New 或 bnb.New 注入 ExpectedChainID；显式调用 ValidateNetwork；使用 common.Address、*big.Int、ethereum.CallMsg 等原生参数。SendRawTransaction 接收业务已编码的字符串。
+
+Solana：宿主通过 solana.New(Config{}, caller) 构造受限客户端；读取方法使用原生 rpc options；模拟传入已序列化字节；提交传入已编码字符串及 rpc.TransactionOpts。项目不提供 Transaction 对象构造、签名或编码入口。
+
+### 8.4 非功能要求与非目标
+
+继续保持无后台、无重试、无轮询、无 failover、无日志实例、无统一适配器。桥接只承担本轮批准方法所需的协议连接，不导出通用设施。
+
+非目标：迁移 Bitcoin/Tron 或公共协议、提供旧 API 兼容层、公开完整原生 client、添加新链、新方法、订阅、批处理公共 API、交易构造/签名、钱包 module、部署、真实 RPC、广播和 Git 操作。
+
+### 8.5 双向追踪
+
+| 功能 Plan | 需求/AC | 活动任务 | 验证贡献 |
+|---|---|---|---|
+| PLAN-002 原生 EVM/Ethereum/BNB | NS-01/02/03/04/07/08，AC-01–05/09/12/13 | T037→T038→T039 | 原生 EVM、桥接、身份、提交、EVM integration |
+| PLAN-004 原生 Solana | NS-01/02/05/06/07/08，AC-01–04/07/09/12/13 | T040→T041→T042 | 原生 Solana、桥接、提交、Solana integration、最终离线验收 |
+| 保留真实验收 | AC-10/11 | T036（BLOCKED） | 不属于本轮已授权执行范围 |
+
+每个 Task 必须反向列出上表需求；不存在无需求 Task、无 Task 的新增需求或通过删除旧验证降低未变更链验收的情况。

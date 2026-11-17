@@ -3,14 +3,18 @@
 **规格文档 / Spec**：[spec.md](spec.md)  
 **技术方案 / Plan**：[plan.md](plan.md)  
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
-**基线版本 / Baseline Version**：PLAN-v7-REMAINING-RAW-v1
+**基线版本 / Baseline Version**：PLAN-v8-NATIVE-SDK-v1
 **日期 / Date**：2026-11-17
-**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T028 已完成并集成；T029–T036 暂停 / T029 not authorized
+**状态 / Status**：T037–T042 已完成离线实施、验证与独立审计；T036 保持 `BLOCKED`；等待 Human 最终验收
+
+> 当前权威范围：本轮迁移以 spec §8、plan §10、tasks §8 为准。它们替代旧文档中 EVM/Solana 自研 API、DTO、Has/present 规则、依赖禁令、相关 runner 字典和逐 Task 人工停顿要求；未涉及的 Bitcoin、Tron、jsonrpc、httpjson、原始错误、安全输出和真实验收规则继续有效。旧版本条目及 T017–T035 是历史证据，不代表新原生依赖基线已经通过验证。历史已完成任务不计入本轮活动清单。活动工作为两个功能 Plan、六个迁移 Task，另有未获真实执行授权的 T036。
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
+| PLAN-v8-NATIVE-SDK-v1 | 2026-11-17 | Human 明确批准 NATIVE-SDK-GOVERNANCE-v1，授权依本候选连续规划、实施和独立审计。固定 go-ethereum v1.17.10、solana-go/v2 v2.3.0、Go 1.26；以私有持有上游 client 的受限封装替换 EVM/Ethereum/BNB 和 Solana 自研高层方法及类型，不提供兼容层。保持原始错误契约，批准两种私有最小协议桥接及仅限固定依赖的原生指针/转换例外。constitution 升至 1.5；AC-13 改为项目公开 API 和实际调用路径审查。本轮复用 PLAN-002、PLAN-004，新增稳定 Task T037–T042；原已完成 Task 仅作历史，T036 继续 BLOCKED。保留现有 internal/test/integration 迁移，不授权真实 RPC、广播、Git 操作或发布。 |
+| PARALLEL-v1 | 2026-11-17 | Human 已授权：仅把 T031 的调度依赖由 T030 改为 T028，允许 T029∥T031 RED 及其独立门禁后的 T030∥T032 GREEN；T033 的全链依赖与 T033→T034→T035→T036 保持不变。剩余审计统一使用 `gpt-6.1-sol / medium` 全新只读上下文。保持 5 Plan/20 Task、全部 Scope/API/验收/预算与 RED/GREEN 门禁；不授权真实 RPC、浏览器采集、广播或 Git 发布/集成。 |
 | PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027/T028 已完成 RED/GREEN、独立 Auditor 与 Human 门禁并获准集成；T029 明确暂停。真实 RPC 与广播仍未授权。 |
 | RAW-ERROR-v1 | 2026-11-17 | Human 已批准：恢复原始节点 Message/Data、HTTP 错误正文及底层 Cause；区分 SDK 返回与 live 脱敏输出。重开 T017–T022，修订 T025/T026；T025 当前 RED/审核不能作为新基线门禁。T023/T024 未受影响证据保留，SDK→harness 输出隔离在 T033/T034 验证。保持 5 Plan / 20 Task、T017–T036 ID 与原路径；T027 继续暂停。constitution 1.3 同时获批；T017/T018 已完成门禁并获准集成，T019 未授权。 |
 | EVM-RAW-DTO-v1 | 2026-11-17 | Human 已批准：将 EVM 收敛为原始 RPC DTO + 必要转换，接受破坏性 API 变更且不提供兼容层；重开 T025/T026，旧证据 stale。T025 可进入 RED，T026 仍等待审核和 Human 门禁；Bitcoin 候选暂停。保持 5 Plan / 20 Task、路径和依赖，不改 constitution。 |
@@ -61,7 +65,7 @@ bnb/                       # BNB 具体客户端
 bitcoin/                   # Bitcoin Core 客户端
 solana/                    # Solana 客户端
 tron/                      # Tron 客户端
-internal/test/live/        # 测试专用真实数据装配与证据
+internal/test/integration/ # 测试专用真实数据装配与证据
 ```
 
 依赖方向固定为：具体链包 → 协议包 → `transport`；`ethereum`/`bnb` → `evm` → `jsonrpc`；`tron` → `httpjson`。核心包不得反向依赖 live 测试。
@@ -130,6 +134,8 @@ Bitcoin `EstimateSmartFee` 除外：其 bool 表示 `hasEstimate`；收到无估
 具体链与协议 `*Client` 保持指针构造器和方法接收者，因为这些对象包含大量方法并持有通信依赖。`HTTPDoer.Do(*http.Request) (*http.Response,error)` 仅因兼容标准库 `http.Client.Do` 契约而保留，是本次要求 Human 明确批准的唯一标准库指针签名；不授权其他 SDK DTO 使用指针。
 
 ### 3.2 EVM-RAW-DTO-v1 首版契约 / First-Release Contract
+
+> 历史契约：本节的自研 API、DTO、指针/present/Has 和方法 wire 在 PLAN-v8-NATIVE-SDK-v1 中被 §10 的固定原生契约替代，不得用于本轮实现或保留兼容层。
 
 **依据与选择。** 2026-11-17 只读观察：当前 HEAD 为 `d3502b8c151de849bfc545656ce2dd81d87d1e86`，另有未提交 `evm/client.go`；`types.go`/`query.go` 合计 632 行。参考 `/Users/stone/cndt/chain-scanner-core-go/rpc/evm/{types,client,hex}.go` 合计 216 行，但只覆盖四方法，不能直接作为本 SDK 行数目标。只借鉴原始字段与按需转换，不复制配置、logger、默认客户端、重试或 dispatcher。
 
@@ -409,6 +415,8 @@ BTC 金额转换只发生于 `TxOut.Value`、`TxOutput.Value`、`MempoolEntry` �
 
 ### 3.4 Solana 精确契约 / Solana Contract
 
+> 历史契约：本节的自研 API、DTO、指针/present/Has 和方法 wire 在 PLAN-v8-NATIVE-SDK-v1 中被 §10 的固定原生契约替代，不得用于本轮实现或保留兼容层。
+
 `Config` 为 `struct{}`；`New(Config,jsonrpc.Caller) (*Client,error)`。`Pubkey`、`Hash`、`Signature`、`EncodedMessage`、`Commitment`、`Encoding` 为命名 string 并提供 `ToString() string`。常量名称和值固定为 `Processed="processed"`、`Confirmed="confirmed"`、`Finalized="finalized"`，以及 `Base58="base58"`、`Base64="base64"`、`JSON="json"`、`JSONParsed="jsonParsed"`。`EncodedTransaction` 为值结构体 `{Data string; Encoding Encoding}`，不提供编码或签名方法。
 
 | 请求类型 | 精确字段 |
@@ -601,9 +609,9 @@ func (e Error) WithContextCause(err error) Error
 
 每个行为实现 Task 必须依赖更早的失败测试 Task；RED 由测试 Task 留证，GREEN/Refactor 由对应实现 Task 完成。不得把两者写成同一 Task 的内部步骤来替代依赖门禁。各链方法范围仍以 spec §3 和本方案既有契约为准，不按单个 RPC 方法继续拆分。
 
-默认依序处理 PLAN-001→002→003→004→005。依赖满足并不自动授权并行 Agent。测试/实现 Task 之间不设置要求全部测试为绿的独立交付门禁；子 Plan 交付时必须全部转绿并完成规定审核。
+默认顺序仅在未被 Human 明确调整时适用。PARALLEL-v1 下 T017–T028 完成事实保留，剩余依赖为 `T028→{T029→T030，T031→T032}`，再由 T024/T026/T028/T030/T032 汇合至 T033→T034→T035→T036。T029/T031 可并行 RED；两项各自独立审核及适用 Human 门禁后 T030/T032 可并行 GREEN。每条分支只拥有原 Scope，禁止修改共享依赖或受保护测试。5 Plan/20 Task 与全部验收、预算不变。
 
-当前状态以 PLAN-v7-REMAINING-RAW-v1 为准：T017–T028 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成；旧 reopened/stale 描述只保留历史。T029–T036 暂停，后续仍按 T029→T030→T031→T032→T033→T034→T035→T036 顺序逐项取得授权并过门禁，不授权并行实施，也不新增 T037。
+当前状态以 PLAN-v7-REMAINING-RAW-v1+PARALLEL-v1 为准：T017–T035 已完成对应离线 RED/GREEN、验证与独立 Auditor 门禁；旧 reopened/stale/paused 描述只保留历史。T036 已完成本地缺项核对，但真实验收因授权与材料缺失为 `BLOCKED`，不新增 T037。
 
 ## 6. 请求流程
 
@@ -632,11 +640,11 @@ sequenceDiagram
 
 ### 7.2 live harness：HARNESS-CONTRACT-v1（已批准）
 
-以下 HC-01–HC-08 是 AC-09 的已批准精确契约；条款 ID 不属于活动 Task。它们仅作用于 `internal/test/live`，不能扩展核心 SDK 的配置读取、调度或链访问职责。
+以下 HC-01–HC-08 是 AC-09 的已批准精确契约；条款 ID 不属于活动 Task。它们仅作用于 `internal/test/integration`，不能扩展核心 SDK 的配置读取、调度或链访问职责。
 
 #### HC-01：边界与开关
 
-- `internal/test/live` 是测试装配；核心 SDK 仍不读 env/file。
+- `internal/test/integration` 是测试装配；核心 SDK 仍不读 env/file。
 - `runHarness(..., enabled=false, ...)` 立即返回 `NOT_RUN`，不调用配置 loader、manifest loader、clock、waiter 或 case；请求数为零。
 - 实际入口只能读取 live 开关以决定是否启用；关闭后不得读取配置路径变量、Header 引用变量、配置文件、manifest 或交易材料。
 - 无默认 endpoint、HTTP client、配置路径、凭据、重试、轮询、后台 worker、文件 watcher 或网络 fallback。
@@ -782,25 +790,27 @@ SDK→runner→harness 的信息边界由既有 T033/T034 覆盖：callback 可�
 
 ### 7.4 Task Contract / Task Contract
 
+> 本节保留旧任务契约及历史估算；T037–T042 的活动契约、预算与授权门禁由 §10 和 tasks §8 完整替代，旧的逐 Task 人工停顿及共享 20/20/30 硬时箱不套用于本轮。
+
 ```yaml
 planning_baseline:
-  version: PLAN-v7-REMAINING-RAW-v1
-  approval_status: awaiting_human_approval
+  version: PLAN-v7-REMAINING-RAW-v1+PARALLEL-v1
+  approval_status: human_authorized_remaining_parallel_schedule
   approved_file_set:
     - docs/superpowers/001-chain-api-go/spec.md
     - docs/superpowers/001-chain-api-go/plan.md
     - docs/superpowers/001-chain-api-go/tasks.md
-  constitution_version: "1.3 Active；只读，不在本次修改集合"
+  constitution_version: "1.4 Active；只读，不在本次修改集合"
   manifest: not_applicable_single_requirement
 
 workflow_state:
-  current: AWAITING_FULL_REMAINING_BASELINE_APPROVAL
-  active_task: none
-  first_authorizable_task: T027
-  blocked_tasks: [T027, T028, T029, T030, T031, T032, T033, T034, T035, T036]
-  preserved_completed_tasks: [T017, T018, T019, T020, T021, T022, T023, T024, T025, T026]
+  current: T036_BLOCKED_MISSING_LIVE_AUTHORITY_AND_MATERIALS
+  active_task: T036
+  first_authorizable_tasks: []
+  blocked_tasks: [T036]
+  preserved_completed_tasks: [T017, T018, T019, T020, T021, T022, T023, T024, T025, T026, T027, T028, T029, T030, T031, T032, T033, T034, T035]
   reopened_tasks: []
-  execution_sequence: [T027, T028, T029, T030, T031, T032, T033, T034, T035, T036]
+  execution_waves: [[T029, T031], [T030, T032], [T033], [T034], [T035], [T036]]
   coder_may_report: [IMPLEMENTED]
   transitions: [IMPLEMENTED, LOCALLY_VERIFIED, READY_FOR_AUDIT, AUDIT_PASSED, DONE]
   done_requires: [valid_snapshot_bound_evidence, auditor_pass_recommendation, human_final_approval]
@@ -870,7 +880,7 @@ bitcoin_contract_delta:
 
 remaining_scope_delta:
   authority: "spec BC/SOL/TR/LR；plan §3.3–§3.5、§7.8"
-  status: awaiting_human_approval
+  status: human_authorized_offline_execution
   new_plans: 0
   new_tasks: 0
   new_dependencies: 0
@@ -968,6 +978,8 @@ stop_conditions:
 
 ### 7.7 资源预算与冲突门禁 / Budget and Conflict Gate
 
+> 本节保留旧任务契约及历史估算；T037–T042 的活动契约、预算与授权门禁由 §10 和 tasks §8 完整替代，旧的逐 Task 人工停顿及共享 20/20/30 硬时箱不套用于本轮。
+
 EVM-RAW-DTO-v1/T025–T026 统一采用 §3.2 的 20/20/30 分钟共享时箱与行数预警，替代此前 EVM 声明骨架和小时预算。T025 原十路径不扩大且本轮仅写六测试文件；T026 原七生产路径不变。
 
 RAW-ERROR-v1 增量共享规划 20 分钟、生产编码 20 分钟、测试执行与独立审核 30 分钟时箱，覆盖 T017–T022 及 T025/T026 中本次错误契约增量，不按 Task 重置。预计增量生产代码约 120–220 行、测试代码约 220–400 行，均在既有路径内；EVM 原始 DTO 工作单独记账，同一工作不得重复计费。时箱耗尽时保留快照并报告，不新增 Task、不弱化断言、不自动延长。
@@ -999,7 +1011,7 @@ HARNESS-CONTRACT-v1 的 T023、T024 各自最多 70 分钟：规划 20 分钟、
 
 > §7.8.1 之前的内容仅为历史摘要，不作为实现或材料校验依据。runner 的入口、类型、JSON 字典、断言、状态与输出完整地由 §7.8.1–§7.8.7 替代。
 
-runner 只存在于 `internal/test/live`，是测试装配而不是核心统一链入口。每链直接接收具体客户端并创建独立 case closures；不得创建通用 `ChainClient`、RPC 方法执行表、注册表或 dispatcher。已完成的 `harness.go`、`config.go`、`manifest.go` 及其受保护测试不修改。
+runner 只存在于 `internal/test/integration`，是测试装配而不是核心统一链入口。每链直接接收具体客户端并创建独立 case closures；不得创建通用 `ChainClient`、RPC 方法执行表、注册表或 dispatcher。已完成的 `harness.go`、`config.go`、`manifest.go` 及其受保护测试不修改。
 
 内部入口固定为：
 
@@ -1459,25 +1471,159 @@ go test ./apierror ./jsonrpc ./httpjson
 go test -race ./jsonrpc
 go test ./evm ./ethereum ./bnb
 go test ./bitcoin ./solana ./tron
-go test ./internal/test/live -run '^TestHarness' -count=1
-go test -race ./internal/test/live -run '^TestHarness' -count=1
-go test ./internal/test/live -run '^TestHarness|TestReadContract|TestSubmissionContract'
+go test ./internal/test/integration -run '^TestHarness' -count=1
+go test -race ./internal/test/integration -run '^TestHarness' -count=1
+go test ./internal/test/integration -run '^TestHarness|TestReadContract|TestSubmissionContract'
 go vet ./...
 ```
 
 真实只读和提交只在审批后的最终窗口运行：
 
 ```sh
-CHAIN_API_GO_LIVE_TEST=1 go test ./internal/test/live -run '^TestLiveRead$' -count=1
-CHAIN_API_GO_LIVE_TEST=1 CHAIN_API_GO_LIVE_BROADCAST=1 go test ./internal/test/live -run '^TestLiveBroadcast$' -count=1
+CHAIN_API_GO_LIVE_TEST=1 go test ./internal/test/integration -run '^TestLiveRead$' -count=1
+CHAIN_API_GO_LIVE_TEST=1 CHAIN_API_GO_LIVE_BROADCAST=1 go test ./internal/test/integration -run '^TestLiveBroadcast$' -count=1
 ```
 
 ## 9. 角色与门禁
 
-- 所有角色开始工作前读取根目录 `AGENTS.md` 与 `constitution.md`；违反 constitution 的设计或实现不得进入审核。
-- Planner：`gpt-6-astra / high`，只读规划。
-- Coder：`gpt-6-astra / low`，只能修改获批 Task 的路径。
-- Auditor：固定 `gpt-5.6-sol / medium`，必须是全新只读上下文；当前运行时未提供该模型时不得静默替换。
-- Human：PLAN-v7-REMAINING-RAW-v1 已批准；T017–T028 的 RED/GREEN、Auditor、Human 门禁与集成已完成。T027/T028 的 `gpt-6.1-sol / medium` 替代路由分别只针对对应审计。T029 明确暂停，不自动授权后续 Task。没有真实 RPC、广播、推送或 PR 授权。
+所有角色先读 AGENTS、constitution 1.5、architecture 及本版本三件套。Planner 使用 gpt-6-astra/high，只读；Coder 使用 gpt-6-astra/low，只能修改当前 Task 的 Scope；Auditor 使用 Human 明确批准的 gpt-6.1-sol/medium，每轮全新只读上下文，不得静默替换。
 
-当前无活动任务。仍为 5 Plan / 20 Task；T017–T028 已完成，T029–T036 暂停。后续固定 Auditor `gpt-5.6-sol / medium` 若当前运行时不可用，仍必须逐次取得 Human 降级裁决，不得沿用 T027/T028 的专项替代授权。
+Human 的 NATIVE-SDK-GOVERNANCE-v1 授权本候选范围内连续完成规划、TDD 实施和独立审计，不要求重复请求已授权的逐 Task 许可。Controller 必须先检查三件套完整、版本一致、路径可用、追踪完整，然后依赖序列启动 Task；未来 RED、GREEN、审计和验证不得预先写成通过。
+
+每个 RED 由 Controller 验证失败归因；T039 完成 PLAN-002 的独立审计，T042 完成 PLAN-004 及最终独立审计。Coder 只能建议 IMPLEMENTED，确定性门禁提交 LOCALLY_VERIFIED/READY_FOR_AUDIT，Auditor 只能建议 AUDIT_PASSED；Controller 依据有效证据更新状态。最终交付报告明确 Human 最终验收与 T036 的独立状态，不把自动审计等同真实链验收。
+
+本轮只有 PLAN-002、PLAN-004 两个功能 Plan 和 T037–T042 六个活动迁移 Task；既有 Plan 总目录仍为五个。已完成任务保留历史记录，不重新执行。T036 仍为 BLOCKED。真实 RPC、广播、Git 操作、提交、推送、PR 和发布均未授权。
+
+## 10. PLAN-v8-NATIVE-SDK-v1 冻结实施契约
+
+### 10.1 研究、快照与方案选择
+
+仓库观察：module 为 `github.com/Stone-afk/chain-api-go`，旧基线由自研 EVM 和 Solana client/types/query/compute/submit 实现，Ethereum/BNB 包装本项目 `evm.Client`；`jsonrpc.Caller` 已提供显式注入和原始错误。`internal/test/integration` 是当前目录，现有迁移必须保留。T017–T035 的历史离线证据不证明新依赖基线成立。
+
+固定 tag 已依据上游源码核对：go-ethereum v1.17.10 的 `ethclient`、`rpc`、`interfaces.go`；solana-go/v2 v2.3.0 的 `rpc.Client`、`JSONRPCClient`、查询、模拟和 encoded submit 实现。选用“私有持有上游 client + 最小协议桥接 + 受限 facade”，不导出完整上游 client，不保留旧 DTO/API 兼容层。
+
+### 10.2 依赖和构造
+
+最终 go.mod：
+- `go 1.26.0`；
+- 直接 require `github.com/ethereum/go-ethereum v1.17.10`；
+- 直接 require `github.com/solana-foundation/solana-go/v2 v2.3.0`；
+- 间接依赖与 go.sum 由 Go module 工具根据实际 imports 生成。
+
+不得新增 replace、fork、其他直接依赖或修改版本。使用可用的 Go 1.26.x 工具链并记录精确 `go version`；工具链不可用是 BLOCKED，不是 RED。
+
+构造公开签名保持：
+
+```go
+evm.New(jsonrpc.Caller) (*evm.Client, error)
+ethereum.New(ethereum.Config, jsonrpc.Caller) (*ethereum.Client, error)
+bnb.New(bnb.Config, jsonrpc.Caller) (*bnb.Client, error)
+solana.New(solana.Config, jsonrpc.Caller) (*solana.Client, error)
+```
+
+Ethereum/BNB Config 继续包含值字段 `ExpectedChainID big.Int`，要求正数并复制配置；`ValidateNetwork(context.Context) error` 显式调用 `ChainID` 一次并比较。Solana Config 保留空结构。只能直接检查 Caller 接口 `== nil`，不检查 typed-nil。
+
+EVM Client 私有持有 `*ethclient.Client` 和 `*gethrpc.Client`。构造通过固定 synthetic URL `http://chain-api-go.invalid` 和显式私有内存 RoundTripper 建立上游 client；禁止默认 transport fallback，构造不得发 Caller 请求。Solana Client 私有持有 `*srpc.Client`，通过 `srpc.NewWithCustomRPCClient(privateRPCBridge)` 构造。不得导出 `Client()`、`RPC()`、`Close()`、完整上游 client 或其匿名嵌入；Ethereum/BNB 可嵌入本项目受限 `*evm.Client`。
+
+### 10.3 EVM 唯一公开方法
+
+十三个高层方法直接委托 `ethclient`，不重新定义请求/响应 DTO：
+
+```go
+ChainID(context.Context) (*big.Int, error)
+BlockNumber(context.Context) (uint64, error)
+BlockByNumber(context.Context, *big.Int) (*types.Block, error)
+BalanceAt(context.Context, common.Address, *big.Int) (*big.Int, error)
+NonceAt(context.Context, common.Address, *big.Int) (uint64, error)
+CodeAt(context.Context, common.Address, *big.Int) ([]byte, error)
+TransactionByHash(context.Context, common.Hash) (*types.Transaction, bool, error)
+TransactionReceipt(context.Context, common.Hash) (*types.Receipt, error)
+FilterLogs(context.Context, geth.FilterQuery) ([]types.Log, error)
+CallContract(context.Context, geth.CallMsg, *big.Int) ([]byte, error)
+EstimateGas(context.Context, geth.CallMsg) (uint64, error)
+SuggestGasPrice(context.Context) (*big.Int, error)
+FeeHistory(context.Context, uint64, *big.Int, []float64) (*geth.FeeHistory, error)
+SendRawTransaction(context.Context, string) (common.Hash, error)
+```
+
+`TransactionByHash` 的 bool 是 `isPending`。null 交易、回执、区块按上游 `ethereum.NotFound` 返回。nil 区块参数、负数标签、完整块及叔块读取按固定上游语义处理。
+
+`SendRawTransaction` 只验证非空、`0x` 前缀和偶数十六进制，不重编码；通过私有 `rpc.Client.CallContext` 调用 `eth_sendRawTransaction` 一次。禁止调用 `ethclient.SendTransaction`，禁止接收 `*types.Transaction`。非法输入零 Caller 调用；成功必须返回非零 `common.Hash`。
+
+删除旧 `evm/types.go` 自研 DTO、Quantity/Data/Address/Hash/BlockTag、Has 和转换层；不得保留 alias 或旧方法转发。
+
+### 10.4 Solana 唯一公开方法
+
+```go
+GetGenesisHash(context.Context) (nativeSol.Hash, error)
+GetSlotWithOpts(context.Context, *srpc.GetSlotOpts) (uint64, error)
+GetBlockWithOpts(context.Context, uint64, *srpc.GetBlockOpts) (*srpc.GetBlockResult, error)
+GetBalanceWithOpts(context.Context, nativeSol.PublicKey, *srpc.GetBalanceOpts) (*srpc.GetBalanceResult, error)
+GetAccountInfoWithOpts(context.Context, nativeSol.PublicKey, *srpc.GetAccountInfoOpts) (*srpc.GetAccountInfoResult, error)
+GetLatestBlockhashWithOpts(context.Context, *srpc.GetLatestBlockhashOpts) (*srpc.GetLatestBlockhashResult, error)
+GetSignatureStatuses(context.Context, bool, ...nativeSol.Signature) (*srpc.GetSignatureStatusesResult, error)
+GetTransaction(context.Context, nativeSol.Signature, *srpc.GetTransactionOpts) (*srpc.GetTransactionResult, error)
+GetFeeForMessageWithOpts(context.Context, string, *srpc.GetFeeForMessageOpts) (*srpc.GetFeeForMessageResult, error)
+SimulateRawTransactionWithOpts(context.Context, []byte, *srpc.SimulateTransactionOpts) (*srpc.SimulateTransactionResponse, error)
+SendEncodedTransactionWithOpts(context.Context, string, srpc.TransactionOpts) (nativeSol.Signature, error)
+```
+
+查询与计算直接委托原生同名方法，保留原生 options 指针、nullable、context、enum、legacy/v0 与错误哨兵。模拟参数是调用方已序列化交易字节，项目只允许上游做 RPC 需要的 base64 传输封装。
+
+提交字符串必须非空；Encoding 允许空、base64、base58，空值沿用上游 base64 默认。项目只做语法校验，不 trim、不重编码，opts 原样传递；只提交一次且拒绝零 Signature。删除旧 Solana DTO、旧方法、EncodedTransaction 包装和兼容层；空 Config 移到 client.go。
+
+### 10.5 两种私有协议桥接
+
+EVM bridge 只实现 `http.RoundTripper`，不是网络 transport：读取并关闭上游单请求 body，保留 id/params 原始 JSON，以同一 context/method/params 调用注入 Caller；成功仅在内存构造 HTTP 200 JSON-RPC success response。Caller 失败直接返回 Go error，不构造 JSON-RPC error envelope。固定 `BlockByNumber` 所需 batch 按顺序逐项调用 Caller，首错停止，不重试、不并发 fanout；完整块最多一次块请求加 N 次叔块请求。bridge 无共享可变请求状态和缓存。
+
+Solana bridge 实现固定 `JSONRPCClient`：
+
+```go
+CallForInto(context.Context, any, string, []any) error
+CallWithCallback(context.Context, string, []any, func(*http.Request, *http.Response) error) error
+CallBatch(context.Context, sjsonrpc.RPCRequests) (sjsonrpc.RPCResponses, error)
+```
+
+`CallForInto` 将同一 ctx/method/params/out 交给 Caller 一次；pointer 输出由既有 jsonrpc 解码处理。callback 和 batch 返回 `apierror.Unsupported`，零 Caller/callback/网络调用。两种 bridge 可用一个包内私有值 error 包装标记 Caller 来源，仅含 Cause 并实现 Error/Unwrap；不得使用全局/per-call client 标志、反射或 message 猜测。
+
+### 10.6 原始错误及提交状态
+
+查询/计算保留上游错误和原始 Caller error 链；原生 NotFound/NotConfirmed 不转成成功 present=false。Caller 的 `apierror.Error` 仍可通过 `errors.As` 取得全部原始字段。
+
+提交分类：本地输入错误为 InvalidArgument、`SubmissionUnknown=false`、零调用；Caller 的明确 RPC 节点拒绝保留全部字段且 Unknown=false，其他 Caller 错误保留 Cause 且 Unknown=true；Caller 成功后 hash/signature 解码失败或零标识为 Protocol、Unknown=true；成功只返回非零原生标识，不推断执行或确认。不得根据英文文本或 HTTP 状态猜测节点拒绝。
+
+### 10.7 integration 迁移契约
+
+只修改现有 integration 的 EVM/Solana 适配代码和对应契约测试，保持 harness/config/manifest、claim/journal、安全输出及 Bitcoin/Tron 行为。读目录采用 §10.3 十三个 EVM 和 §10.4 十个 Solana 非提交方法准确名称；提交目录独立。
+
+EVM 请求预算在 Caller 边界逐次计数，不能把一次 `BlockByNumber` 固定视为一次 RPC。必须有含两个叔块的确定性 case：预算至少 3 时发生三次底层调用，预算 2 时第三次不得发出且结果为 BLOCKED。EVM/BNB/Solana read manifest 和 submission material 版本升为 2，旧版本在请求前 BLOCKED；Bitcoin/Tron 保持版本 1。不开启真实入口时仍零材料读取、零请求。
+
+EVM 动态输入和 expected 改用 common/geth/types 原生类型；Solana 动态输入、options、结果与 submission opts 改用原生类型。删除旧 Has/present/包装字典，不新增配置源。测试 fixture 仅使用明确标识的合成内联材料或既有本地材料，不访问浏览器/公共 RPC，不签名、不构造测试交易、不写真实广播 journal。
+
+### 10.8 Task Contract
+
+Runtime 为 Codex；Planner `gpt-6-astra/high` 只读，Coder `gpt-6-astra/low` 限当前 Task Scope，Auditor `gpt-6.1-sol/medium` 全新只读上下文。Human 已授权本冻结范围内连续推进。Coder 仅建议 IMPLEMENTED；Controller 通过确定性证据推进 LOCALLY_VERIFIED/READY_FOR_AUDIT；Auditor 仅建议 AUDIT_PASSED；最终 DONE 仍须有效门禁和 Human 最终验收。
+
+本轮两个完整功能合同：PLAN-002 覆盖 T037–T039 及 NS-01/02/03/04/07/08；PLAN-004 覆盖 T040–T042 及 NS-01/02/05/06/07/08。共同不变量是原始错误、显式 DI、一次提交、零后台/重试、普通测试零公网和不暴露完整上游 client。T036 独立保持 BLOCKED。
+
+Auditor `production_paths_forbidden=true`，审计不授权修改任何文件或静默添加测试。新增范围、路径或依赖必须停止并重新裁决。
+
+### 10.9 TDD、风险与验证层
+
+RED Task 通过测试本地声明的原生接口对 `any(existingClient)` 做运行时类型断言，使旧实现因缺少目标行为而失败；缺依赖、缺符号、编译或环境错误不算 RED。实现 Task 不得修改受保护测试。旧风险逐项映射到固定版本/API、构造零网络、raw error/Cause、EVM 叔块预算、nullable/default、一次提交、Solana unsupported、输出安全和项目 API/调用路径审查。
+
+L1 需求、L2 工程、L3 逻辑、L4 本地组件集成必需；L5 只覆盖确定性故障/安全/预算风险；L6 真实生产验收不属于本轮。所有普通测试使用 fake 或本地内存桥接，禁止公网。
+
+### 10.10 预算及检查
+
+总估算 200 分钟＝80 规划/10 编码/110 验证；每 Plan 100 分钟＝40/5/55；每组三 Task 预算 30/40/30 分钟。实际投入如实记录，不按时间拆 Plan。每 Plan 生产修改预计 350–650 行、测试 500–1000 行；超过约 400 生产行、1200 测试行或 8 路径时复核范围，不自动扩大 Scope。
+
+聚焦检查：T037 `go test ./evm ./ethereum ./bnb`；T038/T039 加 `go test ./internal/test/integration -run '^TestNativeEVM'` 和聚焦 vet；T040 `go test ./solana`；T041 加 `TestNativeSolana` 和聚焦 vet。T042 在明确关闭真实/广播开关后运行一次 `go test ./...`、`go vet ./...`、`go list -m all`、`go list -deps ./...` 以及本轮 Go 文件 gofmt 检查。仅代码、依赖、环境或审计发现使证据 stale 时重跑最小检查。
+
+每 Task 记录 pre-task tree、代码/测试摘要、Go/OS、依赖、配置开关、fixture 身份、命令、退出码和 Auditor 结论。未运行写未运行，T036 不得填 PASS。
+
+### 10.11 停止条件
+
+出现固定 tag/API/Go 不一致或不可用；需要新直接依赖、升级、fork/replace、公开额外方法、完整上游 client、兼容层、新配置源；超出 allowed_paths 或影响未迁移链；无法保留 raw error/Cause；调用批准清单外的网络/签名/交易对象编码路径；需要重试、后台、默认网络 transport 或共享可变状态；RED 只能由编译/环境失败产生；或需要真实 endpoint、凭据、浏览器采样、广播、Git/发布时，停止受影响 Task，不自行创建例外。
+
+已批准的两种私有桥接、固定依赖原生指针/转换、go-ethereum 内部熵读取和明确的 API 破坏性变化不重复请求批准。
