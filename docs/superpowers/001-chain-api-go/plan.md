@@ -5,13 +5,13 @@
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
 **基线版本 / Baseline Version**：PLAN-v7-REMAINING-RAW-v1
 **日期 / Date**：2026-11-17
-**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T027 已完成并集成；T028 已授权进入实现，T029–T036 仍阻塞 / T028 authorized
+**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T028 已完成并集成；T029–T036 暂停 / T029 not authorized
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
-| PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027 已完成 RED、独立 Auditor 与 Human 门禁并获准集成；T028 已单独授权。真实 RPC 与广播仍未授权。 |
+| PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027/T028 已完成 RED/GREEN、独立 Auditor 与 Human 门禁并获准集成；T029 明确暂停。真实 RPC 与广播仍未授权。 |
 | RAW-ERROR-v1 | 2026-11-17 | Human 已批准：恢复原始节点 Message/Data、HTTP 错误正文及底层 Cause；区分 SDK 返回与 live 脱敏输出。重开 T017–T022，修订 T025/T026；T025 当前 RED/审核不能作为新基线门禁。T023/T024 未受影响证据保留，SDK→harness 输出隔离在 T033/T034 验证。保持 5 Plan / 20 Task、T017–T036 ID 与原路径；T027 继续暂停。constitution 1.3 同时获批；T017/T018 已完成门禁并获准集成，T019 未授权。 |
 | EVM-RAW-DTO-v1 | 2026-11-17 | Human 已批准：将 EVM 收敛为原始 RPC DTO + 必要转换，接受破坏性 API 变更且不提供兼容层；重开 T025/T026，旧证据 stale。T025 可进入 RED，T026 仍等待审核和 Human 门禁；Bitcoin 候选暂停。保持 5 Plan / 20 Task、路径和依赖，不改 constitution。 |
 | BITCOIN-CONTRACT-v1 | 2026-11-17 | 候选：补齐 PLAN-003 十方法、DTO、金额/费率、历史和 wire 契约；T027 暂停待批准。只改三件套；保持 5 Plan / 20 Task、全部依赖、T027 七路径、T028 五路径和 T017–T026 有效证据。 |
@@ -603,7 +603,7 @@ func (e Error) WithContextCause(err error) Error
 
 默认依序处理 PLAN-001→002→003→004→005。依赖满足并不自动授权并行 Agent。测试/实现 Task 之间不设置要求全部测试为绿的独立交付门禁；子 Plan 交付时必须全部转绿并完成规定审核。
 
-当前状态以 PLAN-v7-REMAINING-RAW-v1 为准：T017–T027 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成；旧 reopened/stale 描述只保留历史。T028 已单独授权进入实现，T029–T036 仍按 T028→T029→T030→T031→T032→T033→T034→T035→T036 顺序逐项过门禁，不授权并行实施，也不新增 T037。
+当前状态以 PLAN-v7-REMAINING-RAW-v1 为准：T017–T028 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成；旧 reopened/stale 描述只保留历史。T029–T036 暂停，后续仍按 T029→T030→T031→T032→T033→T034→T035→T036 顺序逐项取得授权并过门禁，不授权并行实施，也不新增 T037。
 
 ## 6. 请求流程
 
@@ -1478,6 +1478,6 @@ CHAIN_API_GO_LIVE_TEST=1 CHAIN_API_GO_LIVE_BROADCAST=1 go test ./internal/test/l
 - Planner：`gpt-6-astra / high`，只读规划。
 - Coder：`gpt-6-astra / low`，只能修改获批 Task 的路径。
 - Auditor：固定 `gpt-5.6-sol / medium`，必须是全新只读上下文；当前运行时未提供该模型时不得静默替换。
-- Human：PLAN-v7-REMAINING-RAW-v1 已批准；T017–T027 的 RED/GREEN、Auditor、Human 门禁与集成已完成。T027 Auditor 的 `gpt-6.1-sol / medium` 替代路由仅针对该次审计。T028 已单独授权进入实现；不自动授权 T029 或后续 Task。没有真实 RPC、广播、推送或 PR 授权。
+- Human：PLAN-v7-REMAINING-RAW-v1 已批准；T017–T028 的 RED/GREEN、Auditor、Human 门禁与集成已完成。T027/T028 的 `gpt-6.1-sol / medium` 替代路由分别只针对对应审计。T029 明确暂停，不自动授权后续 Task。没有真实 RPC、广播、推送或 PR 授权。
 
-当前活动任务为 T028。仍为 5 Plan / 20 Task；T017–T027 已完成，T029–T036 未启动。后续固定 Auditor `gpt-5.6-sol / medium` 若当前运行时不可用，仍必须逐次取得 Human 降级裁决，不得沿用 T027 的专项替代授权。
+当前无活动任务。仍为 5 Plan / 20 Task；T017–T028 已完成，T029–T036 暂停。后续固定 Auditor `gpt-5.6-sol / medium` 若当前运行时不可用，仍必须逐次取得 Human 降级裁决，不得沿用 T027/T028 的专项替代授权。

@@ -1,6 +1,9 @@
 package bitcoin
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 type Config struct{}
 
@@ -132,4 +135,77 @@ type MempoolAcceptResult struct {
 	Fees          json.RawMessage `json:"fees"`
 	RejectReason  string          `json:"reject-reason"`
 	RejectDetails string          `json:"reject-details"`
+}
+
+func btcAmount(raw json.RawMessage) (int64, bool) {
+	s := string(raw)
+	if len(s) == 0 {
+		return 0, false
+	}
+	negative := s[0] == '-'
+	if negative {
+		s = s[1:]
+	}
+	if len(s) == 0 || s[0] < '0' || s[0] > '9' {
+		return 0, false
+	}
+	mantissa, exponent := s, ""
+	if i := strings.IndexAny(s, "eE"); i >= 0 {
+		mantissa, exponent = s[:i], s[i+1:]
+	}
+	scale := 8
+	if i := strings.IndexByte(mantissa, '.'); i >= 0 {
+		scale -= len(mantissa) - i - 1
+		mantissa = mantissa[:i] + mantissa[i+1:]
+	}
+	digits := strings.TrimLeft(mantissa, "0")
+	if digits == "" {
+		return 0, true
+	}
+	if negative {
+		return 0, false
+	}
+	expNegative := false
+	if len(exponent) > 0 && (exponent[0] == '+' || exponent[0] == '-') {
+		expNegative = exponent[0] == '-'
+		exponent = exponent[1:]
+	}
+	exp := 0
+	for _, digit := range exponent {
+		if exp > len(s)+19 {
+			return 0, false
+		}
+		exp = exp*10 + int(digit-'0')
+	}
+	if expNegative {
+		scale -= exp
+	} else {
+		scale += exp
+	}
+	if scale < 0 {
+		remove := -scale
+		if remove >= len(digits) || strings.TrimRight(digits[len(digits)-remove:], "0") != "" {
+			return 0, false
+		}
+		digits = digits[:len(digits)-remove]
+		scale = 0
+	}
+	if len(digits)+scale > 19 {
+		return 0, false
+	}
+	var amount int64
+	for _, digit := range digits {
+		d := int64(digit - '0')
+		if amount > (9223372036854775807-d)/10 {
+			return 0, false
+		}
+		amount = amount*10 + d
+	}
+	for range scale {
+		if amount > 9223372036854775807/10 {
+			return 0, false
+		}
+		amount *= 10
+	}
+	return amount, true
 }

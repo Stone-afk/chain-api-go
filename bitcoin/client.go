@@ -1,7 +1,11 @@
 package bitcoin
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+
 	"github.com/Stone-afk/chain-api-go/apierror"
 	"github.com/Stone-afk/chain-api-go/jsonrpc"
 )
@@ -14,33 +18,47 @@ func New(_ Config, rpc jsonrpc.Caller) (*Client, error) {
 	}
 	return &Client{rpc: rpc}, nil
 }
-func (c *Client) GetBlockchainInfo(context.Context) (BlockchainInfo, error) {
-	return BlockchainInfo{}, apierror.Error{Kind: apierror.Unsupported}
+
+func (c *Client) call(ctx context.Context, method string, params []any) (json.RawMessage, error) {
+	var raw json.RawMessage
+	if err := c.rpc.Call(ctx, method, params, &raw); err != nil {
+		var e apierror.Error
+		if !errors.As(err, &e) {
+			e.Kind = apierror.Transport
+		}
+		e.Method, e.Cause = method, err
+		e.SubmissionUnknown = method == "sendrawtransaction" && e.Kind != apierror.RPC
+		return nil, e
+	}
+	return bytes.TrimSpace(raw), nil
 }
-func (c *Client) GetBlockCount(context.Context) (int64, error) {
-	return 0, apierror.Error{Kind: apierror.Unsupported}
+
+func invalid(method string) error {
+	return apierror.Error{Kind: apierror.InvalidArgument, Method: method}
 }
-func (c *Client) GetBlockHash(context.Context, int64) (BlockHash, error) {
-	return "", apierror.Error{Kind: apierror.Unsupported}
+func protocol(method string, cause error) error {
+	return apierror.Error{Kind: apierror.Protocol, Method: method, Cause: cause, SubmissionUnknown: method == "sendrawtransaction"}
 }
-func (c *Client) GetBlock(context.Context, BlockHash) (Block, error) {
-	return Block{}, apierror.Error{Kind: apierror.Unsupported}
+
+func decode(method string, raw json.RawMessage, target any, shape byte) error {
+	if err := json.Unmarshal(raw, target); err != nil {
+		return protocol(method, err)
+	}
+	if len(raw) == 0 || raw[0] != shape {
+		return protocol(method, nil)
+	}
+	return nil
 }
-func (c *Client) GetTxOut(context.Context, GetTxOutRequest) (TxOut, bool, error) {
-	return TxOut{}, false, apierror.Error{Kind: apierror.Unsupported}
+
+func validHex(s string) bool {
+	if len(s) == 0 || len(s)%2 != 0 {
+		return false
+	}
+	for _, c := range s {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
+			return false
+		}
+	}
+	return true
 }
-func (c *Client) GetRawTransaction(context.Context, GetRawTransactionRequest) (Transaction, error) {
-	return Transaction{}, apierror.Error{Kind: apierror.Unsupported}
-}
-func (c *Client) GetMempoolEntry(context.Context, TxID) (MempoolEntry, error) {
-	return MempoolEntry{}, apierror.Error{Kind: apierror.Unsupported}
-}
-func (c *Client) EstimateSmartFee(context.Context, EstimateSmartFeeRequest) (FeeEstimate, bool, error) {
-	return FeeEstimate{}, false, apierror.Error{Kind: apierror.Unsupported}
-}
-func (c *Client) TestMempoolAccept(context.Context, RawTransaction) (MempoolAcceptResult, error) {
-	return MempoolAcceptResult{}, apierror.Error{Kind: apierror.Unsupported}
-}
-func (c *Client) SendRawTransaction(context.Context, RawTransaction) (TxID, error) {
-	return "", apierror.Error{Kind: apierror.Unsupported}
-}
+func validHash(s string) bool { return len(s) == 64 && validHex(s) }

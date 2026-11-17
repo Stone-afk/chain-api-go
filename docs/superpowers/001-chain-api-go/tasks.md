@@ -5,13 +5,13 @@
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
 **基线版本 / Baseline Version**：PLAN-v7-REMAINING-RAW-v1
 **日期 / Date**：2026-11-17
-**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T027 已完成并集成；T028 已授权进入实现，T029–T036 仍阻塞 / T028 authorized
+**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T028 已完成并集成；T029–T036 暂停 / T029 not authorized
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
-| PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027 已完成 RED、独立 Auditor 与 Human 门禁并获准集成；T028 已单独授权。真实 RPC 与广播仍未授权。 |
+| PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027/T028 已完成 RED/GREEN、独立 Auditor 与 Human 门禁并获准集成；T029 明确暂停。真实 RPC 与广播仍未授权。 |
 | RAW-ERROR-v1 | 2026-11-17 | Human 已批准：恢复原始节点 Message/Data、HTTP 错误正文及底层 Cause；区分 SDK 返回与 live 脱敏输出。重开 T017–T022，修订 T025/T026；T025 当前 RED/审核不能作为新基线门禁。T023/T024 未受影响证据保留，SDK→harness 输出隔离在 T033/T034 验证。保持 5 Plan / 20 Task、T017–T036 ID 与原路径；T027 继续暂停。constitution 1.3 同时获批；T017/T018 已完成门禁并获准集成，T019 未授权。 |
 | EVM-RAW-DTO-v1 | 2026-11-17 | Human 已批准：将 EVM 收敛为原始 RPC DTO + 必要转换，接受破坏性 API 变更且不提供兼容层；重开 T025/T026，旧证据 stale。T025 可进入 RED，T026 仍等待审核和 Human 门禁；Bitcoin 候选暂停。保持 5 Plan / 20 Task、路径和依赖，不改 constitution。 |
 | BITCOIN-CONTRACT-v1 | 2026-11-17 | 候选：补齐 PLAN-003 十方法、DTO、金额/费率、历史和 wire 契约；T027 暂停待批准。只改三件套；保持 5 Plan / 20 Task、全部依赖、T027 七路径、T028 五路径和 T017–T026 有效证据。 |
@@ -143,7 +143,7 @@ T025/T026 的 reopened/stale 说明是历史过程；二者当前已完成对应
 
 ## 4. PLAN-003 Bitcoin
 
-BITCOIN-CONTRACT-v1 从未获批并已由已批准的 PLAN-v7-REMAINING-RAW-v1 替代。T027 已完成 RED、独立 Auditor 与 Human 门禁并集成；T028 已单独授权。T029–T036 仍按原依赖链和各自门禁阻塞。不得把旧严格解析或无证据防御复制到其他链。
+BITCOIN-CONTRACT-v1 从未获批并已由已批准的 PLAN-v7-REMAINING-RAW-v1 替代。T027/T028 已完成 RED/GREEN、独立 Auditor 与 Human 门禁并集成；T029–T036 暂停，仍按原依赖链和各自门禁阻塞。不得把旧严格解析或无证据防御复制到其他链。
 
 ### Tests First / 测试先行
 
@@ -157,7 +157,7 @@ BITCOIN-CONTRACT-v1 从未获批并已由已批准的 PLAN-v7-REMAINING-RAW-v1 �
 
 ### Implementation / 实现
 
-- [ ] **T028 实现完整 Bitcoin 客户端 / Implement complete Bitcoin client**
+- [x] **T028 实现完整 Bitcoin 客户端 / Implement complete Bitcoin client**
   - Scope：`bitcoin/client.go`、`bitcoin/types.go`、`bitcoin/query.go`、`bitcoin/compute.go`、`bitcoin/submit.go`。
   - Dependencies：T027。
   - Acceptance：AC-02/04/06/12/13、BC-01–05、RE-01/02/06/07；实现批准的 plan §3.3/§4，T027 全部受保护断言实际执行且 GREEN，不改测试。
@@ -257,4 +257,4 @@ BITCOIN-CONTRACT-v1 从未获批并已由已批准的 PLAN-v7-REMAINING-RAW-v1 �
 - [ ] 每个 Plan 的聚焦验证完成；真实数据、外部 RPC 与链上提交仅在 T036 去重执行。
 - [ ] 未经批准不提交、不推送、不合并；集成阶段只做结构检查。
 
-当前状态：PLAN-v7-REMAINING-RAW-v1 已获 Human 批准；T017–T027 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成。T028 已单独授权进入实现，T029–T036 仍逐项过门禁。仍为 5 Plan / 20 Task；不授权真实 RPC、广播、推送、PR 或将 T027 的 Auditor 替代授权沿用到后续任务。
+当前状态：PLAN-v7-REMAINING-RAW-v1 已获 Human 批准；T017–T028 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成。T029–T036 暂停，未获实施授权。仍为 5 Plan / 20 Task；不授权真实 RPC、广播、推送、PR 或将 T027/T028 的 Auditor 替代授权沿用到后续任务。
