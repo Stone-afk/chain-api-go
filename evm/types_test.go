@@ -2,44 +2,33 @@ package evm
 
 import (
 	"encoding/json"
-	"strings"
+	"reflect"
 	"testing"
 )
 
-func TestScalarEncoding(t *testing.T) {
-	for _, tc := range []struct {
-		name, raw string
-		size      int
-		valid     bool
-	}{
-		{"address", "0x" + strings.Repeat("12", 20), 20, true},
-		{"address-short", "0x12", 20, false},
-		{"address-no-prefix", strings.Repeat("12", 20), 20, false},
-		{"hash", "0x" + strings.Repeat("ab", 32), 32, true}, {"uppercase-hash", "0x" + strings.Repeat("AB", 32), 32, true},
-		{"hash-long", "0x" + strings.Repeat("ab", 33), 32, false},
-		{"hash-nonhex", "0x" + strings.Repeat("zz", 32), 32, false},
-		{"empty-data", "0x", 0, true}, {"byte-data", "0x00ff", 0, true},
-		{"odd-data", "0x0", 0, false}, {"nonhex-data", "0xgg", 0, false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			var value any
-			var err error
-			switch tc.size {
-			case 20:
-				value, err = ParseAddress(tc.raw)
-			case 32:
-				value, err = ParseHash(tc.raw)
-			default:
-				value, err = ParseData(tc.raw)
+// This assertion keeps the tests compilable before the approved API migration.
+func rawString[T any](t *testing.T, s string) T {
+	t.Helper()
+	var v T
+	r := reflect.ValueOf(&v).Elem()
+	if r.Kind() != reflect.String {
+		t.Fatalf("raw RPC API: %s underlying kind = %s; want string", r.Type(), r.Kind())
+	}
+	r.SetString(s)
+	return v
+}
+
+func TestRawStringAPI(t *testing.T) {
+	for _, v := range []any{*new(Address), *new(Hash), *new(Data)} {
+		t.Run(reflect.TypeOf(v).Name(), func(t *testing.T) {
+			r := reflect.New(reflect.TypeOf(v)).Elem()
+			if r.Kind() != reflect.String {
+				t.Fatalf("underlying kind = %s; want string", r.Kind())
 			}
-			if (err == nil) != tc.valid {
-				t.Fatalf("valid=%v err=%v", tc.valid, err)
-			}
-			if tc.valid {
-				b, e := json.Marshal(value)
-				if e != nil || string(b) != `"`+strings.ToLower(tc.raw)+`"` {
-					t.Errorf("wire=%s err=%v", b, e)
-				}
+			r.SetString("0xAbCD")
+			s, ok := r.Interface().(interface{ ToString() string })
+			if !ok || s.ToString() != "0xAbCD" {
+				t.Fatal("ToString must preserve raw spelling")
 			}
 		})
 	}
@@ -60,5 +49,32 @@ func TestBlockRefEncoding(t *testing.T) {
 				t.Fatalf("got %s, %v; want %s", b, e, tc.want)
 			}
 		})
+	}
+}
+
+func TestRawRequestFieldTypes(t *testing.T) {
+	assertFields(t, CallRequest{}, map[string]any{
+		"From": "", "To": "", "Gas": "", "Value": "", "GasPrice": "", "MaxFeePerGas": "", "MaxPriorityFeePerGas": "", "Data": "",
+	})
+	assertFields(t, LogFilter{}, map[string]any{
+		"FromBlock": BlockRef{}, "ToBlock": BlockRef{}, "Addresses": []string(nil), "Topics": [][]string(nil),
+	})
+}
+
+func assertFields(t *testing.T, dto any, want map[string]any) {
+	t.Helper()
+	v := reflect.ValueOf(dto)
+	if v.NumField() != len(want) {
+		t.Errorf("%s has %d fields; want %d raw DTO fields", v.Type(), v.NumField(), len(want))
+	}
+	for name, expected := range want {
+		field := v.FieldByName(name)
+		if !field.IsValid() {
+			t.Errorf("%s missing %s", v.Type(), name)
+			continue
+		}
+		if !reflect.DeepEqual(field.Interface(), expected) {
+			t.Errorf("%s.%s = %#v (%s); want %#v (%T)", v.Type(), name, field.Interface(), field.Type(), expected, expected)
+		}
 	}
 }

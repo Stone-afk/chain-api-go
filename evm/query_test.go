@@ -13,13 +13,14 @@ import (
 )
 
 type rpcFake struct {
-	calls  int
-	method string
-	params []byte
-	ctx    context.Context
-	reply  string
-	err    error
-	result any
+	calls    int
+	method   string
+	params   []byte
+	ctx      context.Context
+	reply    string
+	err      error
+	result   any
+	rawReply bool
 }
 
 func (f *rpcFake) Call(ctx context.Context, method string, params, result any) error {
@@ -34,6 +35,10 @@ func (f *rpcFake) Call(ctx context.Context, method string, params, result any) e
 	}
 	if f.err != nil {
 		return f.err
+	}
+	if f.rawReply {
+		*(result.(*json.RawMessage)) = append(json.RawMessage(nil), f.reply...)
+		return nil
 	}
 	return json.Unmarshal([]byte(f.reply), result)
 }
@@ -76,9 +81,6 @@ func assertWire(t *testing.T, f *rpcFake, method, params string, ctx context.Con
 const addrJSON = `"0x0000000000000000000000000000000000000000"`
 const hashJSON = `"0x0000000000000000000000000000000000000000000000000000000000000000"`
 
-var h1, h2, h3 = Hash{31: 1}, Hash{31: 2}, Hash{31: 3}
-var a1, a2 = Address{19: 1}, Address{19: 2}
-
 const H1 = `"0x0000000000000000000000000000000000000000000000000000000000000001"`
 const H2 = `"0x0000000000000000000000000000000000000000000000000000000000000002"`
 const H3 = `"0x0000000000000000000000000000000000000000000000000000000000000003"`
@@ -89,11 +91,31 @@ const blockJSON = `{"number":"0x10","hash":` + H1 + `,"parentHash":` + H2 + `,"t
 const transactionJSON = `{"hash":` + H1 + `,"from":` + A1 + `,"to":` + A2 + `,"nonce":"0x2","gas":"0x5208","value":"0x10000000000000001","input":"0x00ff","blockHash":` + H2 + `,"blockNumber":"0x10","transactionIndex":"0x3","gasPrice":"0x10000000000000002","maxFeePerGas":"0x10000000000000003","maxPriorityFeePerGas":"0x10000000000000004","chainId":"0x10000000000000005","type":"0x2"}`
 
 var receiptJSON = `{"transactionHash":` + H1 + `,"blockHash":` + H2 + `,"transactionIndex":"0x3","blockNumber":"0x10","from":` + A1 + `,"to":` + A2 + `,"contractAddress":` + A1 + `,"cumulativeGasUsed":"0x5209","gasUsed":"0x5208","logs":[` + logJSON + `],"logsBloom":"0x` + strings.Repeat("00", 255) + `01","status":"0x1","effectiveGasPrice":"0x10000000000000006","type":"0x2"}`
-var wantLog = Log{Address: a1, Topics: []Hash{h2, h3}, Data: Data{0, 255}, Removed: true, BlockHash: h2, TransactionHash: h1, HasBlockHash: true, HasTransactionHash: true, BlockNumber: 16, TransactionIndex: 2, LogIndex: 3, HasBlockNumber: true, HasTransactionIndex: true, HasLogIndex: true}
-var wantBlock = Block{Number: 16, HasNumber: true, Hash: h1, HasHash: true, ParentHash: h2, Timestamp: 17, GasLimit: 18, GasUsed: 19, Transactions: []Hash{h3}, BaseFeePerGas: intValue("18446744073709551617"), HasBaseFeePerGas: true}
-var wantTransaction = Transaction{Hash: h1, From: a1, To: a2, HasTo: true, Nonce: 2, Gas: 21000, Value: intValue("18446744073709551617"), Input: Data{0, 255}, BlockHash: h2, HasBlockHash: true, BlockNumber: 16, HasBlockNumber: true, TransactionIndex: 3, HasTransactionIndex: true, GasPrice: intValue("18446744073709551618"), MaxFeePerGas: intValue("18446744073709551619"), MaxPriorityFeePerGas: intValue("18446744073709551620"), ChainID: intValue("18446744073709551621"), HasGasPrice: true, HasMaxFeePerGas: true, HasMaxPriorityFeePerGas: true, HasChainID: true, Type: 2, HasType: true}
-var wantReceipt = Receipt{TransactionHash: h1, BlockHash: h2, TransactionIndex: 3, BlockNumber: 16, From: a1, To: a2, ContractAddress: a1, HasTo: true, HasContractAddress: true, CumulativeGasUsed: 21001, GasUsed: 21000, Logs: []Log{wantLog}, LogsBloom: [256]byte{255: 1}, Status: 1, HasStatus: true, EffectiveGasPrice: intValue("18446744073709551622"), HasEffectiveGasPrice: true, Type: 2, HasType: true}
 
+func address(t *testing.T) Address {
+	return rawString[Address](t, "0x0000000000000000000000000000000000000001")
+}
+func hash(t *testing.T) Hash {
+	return rawString[Hash](t, "0x0000000000000000000000000000000000000000000000000000000000000001")
+}
+func query(t *testing.T, c *Client, name string) (any, bool, error) {
+	ctx := context.Background()
+	switch name {
+	case "block":
+		return c.GetBlock(ctx, Latest())
+	case "pending":
+		return c.GetBlock(ctx, Pending())
+	case "transaction":
+		return c.GetTransaction(ctx, hash(t))
+	case "receipt":
+		return c.GetTransactionReceipt(ctx, hash(t))
+	case "logs":
+		v, e := c.GetLogs(ctx, LogFilter{FromBlock: AtNumber(0), ToBlock: Latest()})
+		return v, true, e
+	}
+	t.Fatalf("unknown test operation %s", name)
+	return nil, false, nil
+}
 func edited(raw, key, value string) string {
 	var m map[string]json.RawMessage
 	if e := json.Unmarshal([]byte(raw), &m); e != nil {
@@ -109,26 +131,6 @@ func edited(raw, key, value string) string {
 		panic(e)
 	}
 	return string(b)
-}
-func query(c *Client, ctx context.Context, name string) (any, bool, error) {
-	switch name {
-	case "block":
-		return c.GetBlock(ctx, Latest())
-	case "pending-block":
-		return c.GetBlock(ctx, Pending())
-	case "transaction":
-		return c.GetTransaction(ctx, h1)
-	case "receipt":
-		return c.GetTransactionReceipt(ctx, h1)
-	case "logs", "logs-defaults":
-		addresses := []Address{a1}
-		if name == "logs-defaults" {
-			addresses = nil
-		}
-		v, e := c.GetLogs(ctx, LogFilter{FromBlock: AtNumber(0), ToBlock: Latest(), Addresses: addresses, Topics: [][]Hash{{h2, h3}, nil, {}}})
-		return v, true, e
-	}
-	panic(name)
 }
 func TestEVMNew(t *testing.T) {
 	var n *rpcFake
@@ -163,18 +165,24 @@ func TestQueryWireAndValues(t *testing.T) {
 	ctx := context.Background()
 	for _, tc := range []struct {
 		method, params, reply string
-		run                   func(*Client) (any, error)
+		run                   func(*testing.T, *Client) (any, error)
 		want                  any
 	}{
-		{"eth_chainId", `[]`, `"0x10000000000000001"`, func(c *Client) (any, error) { v, e := c.ChainID(ctx); return v.String(), e }, "18446744073709551617"},
-		{"eth_blockNumber", `[]`, `"0x10"`, func(c *Client) (any, error) { return c.BlockNumber(ctx) }, uint64(16)},
-		{"eth_getBalance", `[` + A1 + `,"latest"]`, `"0x10000000000000001"`, func(c *Client) (any, error) { v, e := c.GetBalance(ctx, a1, Latest()); return v.String(), e }, "18446744073709551617"},
-		{"eth_getTransactionCount", `[` + A1 + `,"pending"]`, `"0x0"`, func(c *Client) (any, error) { return c.GetTransactionCount(ctx, a1, Pending()) }, uint64(0)},
-		{"eth_getCode", `[` + A1 + `,"0x0"]`, `"0x00ff"`, func(c *Client) (any, error) { return c.GetCode(ctx, a1, AtNumber(0)) }, Data{0, 255}},
+		{"eth_chainId", `[]`, `"0x10000000000000001"`, func(t *testing.T, c *Client) (any, error) { v, e := c.ChainID(ctx); return v.String(), e }, "18446744073709551617"},
+		{"eth_blockNumber", `[]`, `"0x10"`, func(t *testing.T, c *Client) (any, error) { return c.BlockNumber(ctx) }, uint64(16)},
+		{"eth_getBalance", `[` + A1 + `,"latest"]`, `"0x10000000000000001"`, func(t *testing.T, c *Client) (any, error) {
+			v, e := c.GetBalance(ctx, address(t), Latest())
+			return v.String(), e
+		}, "18446744073709551617"},
+		{"eth_getTransactionCount", `[` + A1 + `,"pending"]`, `"0x0"`, func(t *testing.T, c *Client) (any, error) { return c.GetTransactionCount(ctx, address(t), Pending()) }, uint64(0)},
+		{"eth_getCode", `[` + A1 + `,"0x0"]`, `"0x00ff"`, func(t *testing.T, c *Client) (any, error) {
+			v, e := c.GetCode(ctx, address(t), AtNumber(0))
+			return reflect.ValueOf(v).String(), e
+		}, "0x00ff"},
 	} {
 		t.Run(tc.method, func(t *testing.T) {
 			f := &rpcFake{reply: tc.reply}
-			v, e := tc.run(&Client{rpc: f})
+			v, e := tc.run(t, &Client{rpc: f})
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -183,240 +191,159 @@ func TestQueryWireAndValues(t *testing.T) {
 		})
 	}
 }
-func TestCompleteDTOs(t *testing.T) {
-	defaults := wantLog
-	defaults.Removed = false
+
+func TestCompleteRawDTOs(t *testing.T) {
 	for _, tc := range []struct {
 		name, method, params, reply string
-		want                        any
+		fields                      map[string]any
 	}{
-		{"block", "eth_getBlockByNumber", `["latest",false]`, edited(blockJSON, "futureExtension", `{"ignored":true}`), wantBlock},
-		{"transaction", "eth_getTransactionByHash", `[` + H1 + `]`, transactionJSON, wantTransaction},
-		{"receipt", "eth_getTransactionReceipt", `[` + H1 + `]`, receiptJSON, wantReceipt},
-		{"logs-defaults", "eth_getLogs", `[{"fromBlock":"0x0","toBlock":"latest","topics":[[` + H2 + `,` + H3 + `],null,null]}]`, `[` + edited(logJSON, "removed", "") + `]`, []Log{defaults}},
-		{"logs", "eth_getLogs", `[{"fromBlock":"0x0","toBlock":"latest","address":[` + A1 + `],"topics":[[` + H2 + `,` + H3 + `],null,null]}]`, `[` + logJSON + `]`, []Log{wantLog}},
+		{"block", "eth_getBlockByNumber", `["latest",false]`, blockJSON, map[string]any{
+			"Number": json.RawMessage(`"0x10"`), "Hash": json.RawMessage(H1), "ParentHash": H2[1 : len(H2)-1],
+			"Timestamp": "0x11", "GasLimit": "0x12", "GasUsed": "0x13", "Transactions": []string{H3[1 : len(H3)-1]}, "BaseFeePerGas": json.RawMessage(`"0x10000000000000001"`),
+		}},
+		{"transaction", "eth_getTransactionByHash", "[" + H1 + "]", transactionJSON, map[string]any{
+			"Hash": H1[1 : len(H1)-1], "From": A1[1 : len(A1)-1], "To": json.RawMessage(A2), "Nonce": "0x2", "Gas": "0x5208", "Value": "0x10000000000000001", "Input": "0x00ff",
+			"BlockHash": json.RawMessage(H2), "BlockNumber": json.RawMessage(`"0x10"`), "TransactionIndex": json.RawMessage(`"0x3"`),
+			"GasPrice": json.RawMessage(`"0x10000000000000002"`), "MaxFeePerGas": json.RawMessage(`"0x10000000000000003"`), "MaxPriorityFeePerGas": json.RawMessage(`"0x10000000000000004"`), "ChainID": json.RawMessage(`"0x10000000000000005"`), "Type": json.RawMessage(`"0x2"`),
+		}},
+		{"receipt", "eth_getTransactionReceipt", "[" + H1 + "]", receiptJSON, map[string]any{
+			"TransactionHash": H1[1 : len(H1)-1], "BlockHash": H2[1 : len(H2)-1], "TransactionIndex": "0x3", "BlockNumber": "0x10", "From": A1[1 : len(A1)-1],
+			"To": json.RawMessage(A2), "ContractAddress": json.RawMessage(A1), "CumulativeGasUsed": "0x5209", "GasUsed": "0x5208",
+			"LogsBloom": "0x" + strings.Repeat("00", 255) + "01", "Status": json.RawMessage(`"0x1"`), "Root": json.RawMessage(nil), "EffectiveGasPrice": json.RawMessage(`"0x10000000000000006"`), "Type": json.RawMessage(`"0x2"`),
+		}},
+		{"logs", "eth_getLogs", `[{"fromBlock":"0x0","toBlock":"latest","topics":[]}]`, "[" + logJSON + "]", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := &rpcFake{reply: tc.reply}
-			v, p, e := query(&Client{rpc: f}, context.Background(), tc.name)
+			v, p, e := query(t, &Client{rpc: f}, tc.name)
 			if e != nil {
 				t.Fatal(e)
 			}
 			equal(t, p, true)
-			equal(t, v, tc.want)
 			assertWire(t, f, tc.method, tc.params, context.Background())
+			if tc.name == "logs" {
+				logs := v.([]Log)
+				equal(t, len(logs), 1)
+				assertLog(t, logs[0])
+				return
+			}
+			if tc.name == "receipt" {
+				logs := v.(Receipt).Logs
+				equal(t, len(logs), 1)
+				assertLog(t, logs[0])
+				tc.fields["Logs"] = logs
+			}
+			assertFields(t, v, tc.fields)
 		})
 	}
 }
-func TestPendingHistoricalAndZero(t *testing.T) {
-	legacy := wantTransaction
-	legacy.GasPrice, legacy.MaxFeePerGas, legacy.MaxPriorityFeePerGas, legacy.ChainID = big.Int{}, big.Int{}, big.Int{}, big.Int{}
-	legacy.HasGasPrice, legacy.HasMaxFeePerGas, legacy.HasMaxPriorityFeePerGas, legacy.HasChainID, legacy.HasType = false, false, false, false, false
-	legacy.Type = 0
-	b := wantBlock
-	b.Number = 0
-	b.Hash = Hash{}
-	b.HasNumber = false
-	b.HasHash = false
-	b.BaseFeePerGas = big.Int{}
-	b.HasBaseFeePerGas = false
-	tx := wantTransaction
-	tx.To = Address{}
-	tx.HasTo = false
-	tx.BlockHash = Hash{}
-	tx.BlockNumber = 0
-	tx.TransactionIndex = 0
-	tx.HasBlockHash = false
-	tx.HasBlockNumber = false
-	tx.HasTransactionIndex = false
-	r := wantReceipt
-	r.Status = 0
-	r.HasStatus = false
-	r.Root = h3
-	r.HasRoot = true
-	z := wantReceipt
-	z.Status = 0
-	z.To = Address{}
-	z.ContractAddress = Address{}
-	z.HasTo = false
-	z.HasContractAddress = false
-	z.EffectiveGasPrice = big.Int{}
-	z.HasEffectiveGasPrice = false
-	z.Type = 0
-	z.HasType = false
-	l := wantLog
-	l.BlockHash = Hash{}
-	l.TransactionHash = Hash{}
-	l.BlockNumber = 0
-	l.TransactionIndex = 0
-	l.LogIndex = 0
-	l.HasBlockHash = false
-	l.HasTransactionHash = false
-	l.HasBlockNumber = false
-	l.HasTransactionIndex = false
-	l.HasLogIndex = false
+func assertLog(t *testing.T, v Log) {
+	t.Helper()
+	assertFields(t, v, map[string]any{
+		"Address": A1[1 : len(A1)-1], "Topics": []string{H2[1 : len(H2)-1], H3[1 : len(H3)-1]}, "Data": "0x00ff", "Removed": json.RawMessage("true"),
+		"BlockHash": json.RawMessage(H2), "TransactionHash": json.RawMessage(H1), "BlockNumber": json.RawMessage(`"0x10"`), "TransactionIndex": json.RawMessage(`"0x2"`), "LogIndex": json.RawMessage(`"0x3"`),
+	})
+}
+
+func TestRawPresenceAndPermissiveDecoding(t *testing.T) {
 	for _, tc := range []struct {
-		name, method, reply string
-		want                any
+		name, op, reply, field string
+		want                   any
 	}{
-		{"pending", "pending-block", edited(edited(edited(blockJSON, "number", "null"), "hash", "null"), "baseFeePerGas", ""), b},
-		{"legacy-optional-absent", "transaction", edited(edited(edited(edited(edited(transactionJSON, "gasPrice", ""), "maxFeePerGas", ""), "maxPriorityFeePerGas", ""), "chainId", ""), "type", ""), legacy},
-		{"creation", "transaction", edited(edited(edited(edited(transactionJSON, "to", "null"), "blockHash", "null"), "blockNumber", "null"), "transactionIndex", "null"), tx},
-		{"historical", "receipt", edited(edited(receiptJSON, "status", ""), "root", H3), r},
-		{"failed-creation", "receipt", edited(edited(edited(edited(edited(receiptJSON, "status", `"0x0"`), "to", "null"), "contractAddress", "null"), "effectiveGasPrice", ""), "type", ""), z},
-		{"pending-log", "logs", "[" + edited(edited(edited(edited(edited(logJSON, "blockHash", "null"), "transactionHash", "null"), "blockNumber", "null"), "transactionIndex", "null"), "logIndex", "null") + "]", []Log{l}},
+		{"pending-number", "pending", edited(blockJSON, "number", "null"), "Number", json.RawMessage("null")},
+		{"missing-base-fee", "block", edited(blockJSON, "baseFeePerGas", ""), "BaseFeePerGas", json.RawMessage(nil)},
+		{"creation-to", "transaction", edited(transactionJSON, "to", "null"), "To", json.RawMessage("null")},
+		{"pending-block-hash", "transaction", edited(transactionJSON, "blockHash", "null"), "BlockHash", json.RawMessage("null")},
+		{"failed-status", "receipt", edited(receiptJSON, "status", `"0x0"`), "Status", json.RawMessage(`"0x0"`)},
+		{"historical-root", "receipt", edited(edited(receiptJSON, "status", ""), "root", H3), "Root", json.RawMessage(H3)},
+		{"missing-plain-string", "block", edited(blockJSON, "gasUsed", ""), "GasUsed", ""},
+		{"null-plain-string", "block", edited(blockJSON, "gasUsed", "null"), "GasUsed", ""},
+		{"noncanonical-quantity", "block", edited(blockJSON, "gasUsed", `"0x00"`), "GasUsed", "0x00"},
+		{"noncanonical-hash", "block", edited(blockJSON, "parentHash", `"0xAb"`), "ParentHash", "0xAb"},
+		{"unknown-field", "block", edited(blockJSON, "future", `{"x":1}`), "GasUsed", "0x13"},
+		{"duplicate-standard-last-wins", "block", strings.TrimSuffix(blockJSON, "}") + `,"gasUsed":"0x20"}`, "GasUsed", "0x20"},
+		{"case-folded-key", "block", edited(edited(blockJSON, "gasUsed", ""), "GASUSED", `"0x21"`), "GasUsed", "0x21"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			v, p, e := query(&Client{rpc: &rpcFake{reply: tc.reply}}, context.Background(), tc.method)
+			v, p, e := query(t, &Client{rpc: &rpcFake{reply: tc.reply}}, tc.op)
+			if e != nil {
+				t.Fatalf("raw DTO must decode without schema validation: %v", e)
+			}
+			equal(t, p, true)
+			field := reflect.ValueOf(v).FieldByName(tc.field)
+			equal(t, field.Interface(), tc.want)
+		})
+	}
+	for _, raw := range []string{"", "null", "false"} {
+		t.Run("removed-"+raw, func(t *testing.T) {
+			v, _, e := query(t, &Client{rpc: &rpcFake{reply: "[" + edited(logJSON, "removed", raw) + "]"}}, "logs")
 			if e != nil {
 				t.Fatal(e)
 			}
-			equal(t, p, true)
-			equal(t, v, tc.want)
+			got := reflect.ValueOf(v.([]Log)[0]).FieldByName("Removed").Interface()
+			var want json.RawMessage
+			if raw != "" {
+				want = json.RawMessage(raw)
+			}
+			equal(t, got, want)
 		})
 	}
 }
-func TestRequiredFieldsAndNullable(t *testing.T) {
-	for _, tc := range []struct{ name, raw, keys string }{
-		{"block", blockJSON, "number hash parentHash timestamp gasLimit gasUsed transactions"},
-		{"transaction", transactionJSON, "hash from to nonce gas value input blockHash blockNumber transactionIndex"},
-		{"receipt", receiptJSON, "transactionHash blockHash transactionIndex blockNumber from to contractAddress cumulativeGasUsed gasUsed logs logsBloom status"},
-		{"logs", logJSON, "address topics data blockHash transactionHash blockNumber transactionIndex logIndex"},
-	} {
-		for _, key := range strings.Fields(tc.keys) {
-			t.Run(tc.name+"/missing-"+key, func(t *testing.T) {
-				raw := edited(tc.raw, key, "")
-				if tc.name == "logs" {
-					raw = "[" + raw + "]"
+
+func TestNullableThreeStates(t *testing.T) {
+	for _, name := range []string{"block", "transaction", "receipt"} {
+		for _, failed := range []bool{false, true} {
+			t.Run(name+"/"+map[bool]string{false: "null", true: "rpc"}[failed], func(t *testing.T) {
+				f := &rpcFake{reply: "null"}
+				if failed {
+					f.err = apierror.Error{Kind: apierror.RPC, RPCCode: -32000, HasRPCCode: true}
 				}
-				v, p, e := query(&Client{rpc: &rpcFake{reply: raw}}, context.Background(), tc.name)
-				assertKind(t, e, apierror.Protocol)
-				equal(t, reflect.ValueOf(v).IsZero(), true)
-				if tc.name != "logs" {
-					equal(t, p, false)
-				}
-			})
-		}
-		if tc.name == "logs" {
-			continue
-		}
-		for _, err := range []error{nil, apierror.Error{Kind: apierror.RPC, HasRPCCode: true, RPCCode: -32000}} {
-			t.Run(tc.name+"/null-or-rpc", func(t *testing.T) {
-				v, p, e := query(&Client{rpc: &rpcFake{reply: "null", err: err}}, context.Background(), tc.name)
+				v, p, e := query(t, &Client{rpc: f}, name)
 				equal(t, p, false)
 				equal(t, reflect.ValueOf(v).IsZero(), true)
-				if err == nil {
+				if !failed {
 					equal(t, e, nil)
 				} else {
 					a := assertKind(t, e, apierror.RPC)
 					equal(t, a.RPCCode, -32000)
 					equal(t, a.HasRPCCode, true)
 				}
+				equal(t, f.calls, 1)
 			})
 		}
 	}
 }
-func TestDTOInvalidWire(t *testing.T) {
-	for _, tc := range []struct{ name, raw, key, bad string }{
-		{"block", blockJSON, "number", "null"}, {"block", blockJSON, "hash", `"0x01"`}, {"block", blockJSON, "timestamp", `"0x00"`}, {"block", blockJSON, "gasUsed", `"0x10000000000000000"`}, {"block", blockJSON, "transactions", `[{}]`}, {"block", blockJSON, "transactions", "null"}, {"block", blockJSON, "baseFeePerGas", "null"},
-		{"transaction", transactionJSON, "from", `"0x01"`}, {"transaction", transactionJSON, "input", `"0x0"`}, {"transaction", transactionJSON, "value", `"0x01"`}, {"transaction", transactionJSON, "blockHash", "null"}, {"transaction", transactionJSON, "gasPrice", "null"}, {"transaction", transactionJSON, "type", `"0x10000000000000000"`},
-		{"receipt", receiptJSON, "blockHash", "null"}, {"receipt", receiptJSON, "logsBloom", `"0x00"`}, {"receipt", receiptJSON, "status", `"0x2"`}, {"receipt", receiptJSON, "root", H3}, {"receipt", receiptJSON, "gasUsed", `"0x00"`}, {"receipt", receiptJSON, "logs", "null"}, {"receipt", receiptJSON, "logs", "[" + edited(logJSON, "logIndex", "null") + "]"}, {"receipt", receiptJSON, "effectiveGasPrice", `"0x"`},
-		{"logs", logJSON, "address", `"0x01"`}, {"logs", logJSON, "topics", `["0x01"]`}, {"logs", logJSON, "topics", "null"}, {"logs", logJSON, "topics", "[" + H1 + "," + H1 + "," + H1 + "," + H1 + "," + H1 + "]"}, {"logs", logJSON, "data", `"0x0"`}, {"logs", logJSON, "removed", "null"}, {"logs", logJSON, "logIndex", `"0x00"`},
-	} {
-		t.Run(tc.name+"/"+tc.key+"/"+tc.bad, func(t *testing.T) {
-			raw := edited(tc.raw, tc.key, tc.bad)
-			if tc.name == "logs" {
-				raw = "[" + raw + "]"
-			}
-			v, _, e := query(&Client{rpc: &rpcFake{reply: raw}}, context.Background(), tc.name)
-			assertKind(t, e, apierror.Protocol)
-			equal(t, reflect.ValueOf(v).IsZero(), true)
-		})
-	}
-}
-func amounts(v any) []big.Int {
-	switch x := v.(type) {
-	case big.Int:
-		return []big.Int{x}
-	case Block:
-		return []big.Int{x.BaseFeePerGas}
-	case Transaction:
-		return []big.Int{x.Value, x.GasPrice, x.MaxFeePerGas, x.MaxPriorityFeePerGas, x.ChainID}
-	case Receipt:
-		return []big.Int{x.EffectiveGasPrice}
-	case FeeHistoryResult:
-		r := append([]big.Int{}, x.BaseFeePerGas...)
-		for _, row := range x.Reward {
-			r = append(r, row...)
-		}
-		return r
-	}
-	panic("not monetary")
-}
-func amountStrings(v any) []string {
-	var r []string
-	for _, n := range amounts(v) {
-		r = append(r, n.String())
-	}
-	return r
-}
-func TestReturnedBigIntOwnership(t *testing.T) {
-	for _, tc := range []struct {
-		name, reply string
-		run         func(*Client) (any, error)
-	}{
-		{"chain", `"0x10000000000000001"`, func(c *Client) (any, error) { return c.ChainID(context.Background()) }},
-		{"balance", `"0x10000000000000001"`, func(c *Client) (any, error) { return c.GetBalance(context.Background(), a1, Latest()) }},
-		{"gas-price", `"0x10000000000000001"`, func(c *Client) (any, error) { return c.GasPrice(context.Background()) }},
-		{"block", blockJSON, func(c *Client) (any, error) { v, _, e := c.GetBlock(context.Background(), Latest()); return v, e }},
-		{"transaction", transactionJSON, func(c *Client) (any, error) { v, _, e := c.GetTransaction(context.Background(), h1); return v, e }},
-		{"receipt", receiptJSON, func(c *Client) (any, error) {
-			v, _, e := c.GetTransactionReceipt(context.Background(), h1)
-			return v, e
-		}},
-		{"fee-history", feeJSON, func(c *Client) (any, error) {
-			return c.FeeHistory(context.Background(), 2, Latest(), []float64{25, 75})
-		}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			f := &rpcFake{reply: tc.reply}
+
+func TestScalarBigIntOwnership(t *testing.T) {
+	for _, op := range []string{"chain", "balance", "gas-price"} {
+		t.Run(op, func(t *testing.T) {
+			f := &rpcFake{reply: `"0x10000000000000001"`}
 			c := &Client{rpc: f}
-			first, e := tc.run(c)
+			run := func() (big.Int, error) {
+				switch op {
+				case "chain":
+					return c.ChainID(context.Background())
+				case "balance":
+					return c.GetBalance(context.Background(), address(t), Latest())
+				default:
+					return c.GasPrice(context.Background())
+				}
+			}
+			first, e := run()
 			if e != nil {
 				t.Fatal(e)
 			}
-			original := amountStrings(first)
-			saved := f.result
-			fakeBytes, e := json.Marshal(saved)
+			second, e := run()
 			if e != nil {
 				t.Fatal(e)
 			}
-			second, e := tc.run(c)
+			first.SetBit(&first, 0, 0)
+			equal(t, second.String(), "18446744073709551617")
+			third, e := run()
 			if e != nil {
 				t.Fatal(e)
 			}
-			for i := range amounts(first) {
-				n := amounts(first)
-				n[i].SetBit(&n[i], 0, 1-n[i].Bit(0))
-				for j, s := range amountStrings(first) {
-					if j != i {
-						equal(t, s, original[j])
-					}
-				}
-				equal(t, amountStrings(second), original)
-				during, e := json.Marshal(saved)
-				if e != nil {
-					t.Fatal(e)
-				}
-				equal(t, string(during), string(fakeBytes))
-				third, e := tc.run(c)
-				if e != nil {
-					t.Fatal(e)
-				}
-				equal(t, amountStrings(third), original)
-				n[i].SetBit(&n[i], 0, 1-n[i].Bit(0))
-			}
-			equal(t, f.reply, tc.reply)
+			equal(t, third.String(), "18446744073709551617")
 		})
 	}
 }
