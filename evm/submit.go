@@ -2,33 +2,28 @@ package evm
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"github.com/Stone-afk/chain-api-go/apierror"
+	"strings"
 )
 
-// SendRawTransaction sends the supplied serialized bytes once. A returned hash
-// indicates node acceptance only; execution and confirmation require queries.
+// SendRawTransaction sends the unchanged payload once. A hash means node
+// acceptance only, not execution or confirmation.
 func (c *Client) SendRawTransaction(ctx context.Context, payload Data) (Hash, error) {
-	if ctx == nil || len(payload) == 0 {
-		return Hash{}, invalid()
+	if len(payload) <= 2 || !validHex(string(payload), -1) {
+		return "", invalid()
 	}
-	raw, e := c.invoke(ctx, "eth_sendRawTransaction", []any{"0x" + hex.EncodeToString(payload)})
-	var hash Hash
-	if e == nil {
-		hash, e = parseHash(raw)
+	const method = "eth_sendRawTransaction"
+	raw, err := c.invoke(ctx, method, []any{payload}, true)
+	if err != nil {
+		return "", err
 	}
-	if e != nil {
-		var a apierror.Error
-		if errors.As(e, &a) {
-			a.Method = "eth_sendRawTransaction"
-			switch a.Kind {
-			case apierror.Transport, apierror.HTTP, apierror.Protocol:
-				a.SubmissionUnknown = true
-			}
-			return Hash{}, a
-		}
-		return Hash{}, apierror.Error{Kind: apierror.Protocol, Method: "eth_sendRawTransaction", SubmissionUnknown: true}
+	hash, err := decode[Hash](raw)
+	if err == nil && (!validHex(string(hash), 32) || strings.TrimLeft(string(hash)[2:], "0") == "") {
+		err = errors.New("invalid transaction hash result")
+	}
+	if err != nil {
+		return "", apierror.Error{Kind: apierror.Protocol, Method: method, Cause: err, SubmissionUnknown: true}
 	}
 	return hash, nil
 }
