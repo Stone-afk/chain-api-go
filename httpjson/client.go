@@ -39,7 +39,10 @@ func New(cfg Config, doer transport.HTTPDoer) (*Client, error) {
 		return nil, invalid
 	}
 	u, err := url.Parse(cfg.Endpoint)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || strings.Contains(cfg.Endpoint, "#") {
+	if err != nil {
+		return nil, invalid.WithContextCause(err)
+	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || strings.Contains(cfg.Endpoint, "#") {
 		return nil, invalid
 	}
 	for name, values := range cfg.Headers {
@@ -77,7 +80,7 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	}
 	payload, err := json.Marshal(request)
 	if err != nil {
-		return e
+		return e.WithContextCause(err)
 	}
 	e.Kind = apierror.Transport
 	if err := ctx.Err(); err != nil {
@@ -89,11 +92,11 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	u.RawPath = strings.TrimRight(c.endpoint.EscapedPath(), "/") + "/" + suffix.EscapedPath()
 	u.Path, err = url.PathUnescape(u.RawPath)
 	if err != nil {
-		return apierror.Error{Kind: apierror.Configuration}
+		return apierror.Error{Kind: apierror.Configuration, Cause: err}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(payload))
 	if err != nil {
-		return apierror.Error{Kind: apierror.Configuration}
+		return apierror.Error{Kind: apierror.Configuration, Cause: err}
 	}
 	req.Header = c.cfg.Headers.Clone()
 	if req.Header == nil {
@@ -101,16 +104,18 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.doer.Do(req)
-	if resp != nil && !isNil(resp.Body) {
-		defer resp.Body.Close()
+	if resp != nil {
+		e.HTTPStatus = resp.StatusCode
+		if !isNil(resp.Body) {
+			defer resp.Body.Close()
+		}
 	}
 	if err != nil {
-		return transportError(e, ctx, err)
+		return e.WithContextCause(err)
 	}
 	if resp == nil {
 		return e
 	}
-	e.HTTPStatus = resp.StatusCode
 	e.Kind = apierror.Protocol
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		e.Kind = apierror.HTTP
@@ -120,17 +125,19 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	}
 	// A separate detection byte avoids overflow when the limit is MaxInt64.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, c.cfg.MaxResponseBytes))
+	e.ResponseBody = body
 	if err != nil {
 		e.Kind = apierror.Transport
-		return transportError(e, ctx, err)
+		return e.WithContextCause(err)
 	}
 	if int64(len(body)) == c.cfg.MaxResponseBytes {
 		extra, err := io.ReadAll(io.LimitReader(resp.Body, 1))
+		e.ResponseBodyTruncated = len(extra) != 0
 		if err != nil {
 			e.Kind = apierror.Transport
-			return transportError(e, ctx, err)
+			return e.WithContextCause(err)
 		}
-		if len(extra) != 0 {
+		if e.ResponseBodyTruncated {
 			return e
 		}
 	}
@@ -143,7 +150,7 @@ func (c *Client) RawPost(ctx context.Context, path string, request any, result a
 	}
 	temporary := reflect.New(rv.Elem().Type())
 	if err := json.Unmarshal(body, temporary.Interface()); err != nil {
-		return e
+		return e.WithContextCause(err)
 	}
 	rv.Elem().Set(temporary.Elem())
 	return nil
@@ -166,14 +173,6 @@ func safePath(path string) bool {
 		}
 	}
 	return true
-}
-
-func transportError(e apierror.Error, ctx context.Context, err error) apierror.Error {
-	normalized := e.WithContextCause(err)
-	if normalized.Unwrap() != nil {
-		return normalized
-	}
-	return e.WithContextCause(ctx.Err())
 }
 
 func isNil(v any) bool {
