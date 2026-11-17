@@ -3,14 +3,15 @@
 **规格文档 / Spec**：[spec.md](spec.md)  
 **技术方案 / Plan**：[plan.md](plan.md)  
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
-**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1+BITCOIN-CONTRACT-v1+EVM-RAW-DTO-v1+RAW-ERROR-v1
+**基线版本 / Baseline Version**：PLAN-v7-REMAINING-RAW-v1
 **日期 / Date**：2026-11-17
-**状态 / Status**：T017/T018 已通过 RED、Auditor 与 Human 门禁并获准集成；T019 及以后任务未授权（T017/T018 Complete）
+**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T027 已完成并集成；T028 已授权进入实现，T029–T036 仍阻塞 / T028 authorized
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
+| PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027 已完成 RED、独立 Auditor 与 Human 门禁并获准集成；T028 已单独授权。真实 RPC 与广播仍未授权。 |
 | RAW-ERROR-v1 | 2026-11-17 | Human 已批准：恢复原始节点 Message/Data、HTTP 错误正文及底层 Cause；区分 SDK 返回与 live 脱敏输出。重开 T017–T022，修订 T025/T026；T025 当前 RED/审核不能作为新基线门禁。T023/T024 未受影响证据保留，SDK→harness 输出隔离在 T033/T034 验证。保持 5 Plan / 20 Task、T017–T036 ID 与原路径；T027 继续暂停。constitution 1.3 同时获批；T017/T018 已完成门禁并获准集成，T019 未授权。 |
 | EVM-RAW-DTO-v1 | 2026-11-17 | Human 已批准：将 EVM 收敛为原始 RPC DTO + 必要转换，接受破坏性 API 变更且不提供兼容层；重开 T025/T026，旧证据 stale。T025 可进入 RED，T026 仍等待审核和 Human 门禁；Bitcoin 候选暂停。保持 5 Plan / 20 Task、路径和依赖，不改 constitution。 |
 | BITCOIN-CONTRACT-v1 | 2026-11-17 | 候选：补齐 PLAN-003 十方法、DTO、金额/费率、历史和 wire 契约；T027 暂停待批准。只改三件套；保持 5 Plan / 20 Task、全部依赖、T027 七路径、T028 五路径和 T017–T026 有效证据。 |
@@ -64,7 +65,7 @@ Tron 的五个 solidified 查询为 Account、NowBlock、BlockByNum、Transactio
 | ID | 验收条件 |
 |---|---|
 | AC-01 | 五链包可被直接导入；核心没有服务端、统一适配器或 dispatcher。 |
-| AC-02 | nil/typed-nil 依赖、非法配置和非法参数在请求前返回明确错误；构造过程零网络 I/O。 |
+| AC-02 | 构造函数在单一注入边界拒绝 nil 依赖和本契约明确列出的非法配置，零网络 I/O；不反射探测接口内部 typed-nil。方法仅验证各链契约明确列出的请求输入。调用方须提供有效非 nil context；链层不重复协议层 context 检查，不保护未经构造的零值 Client。 |
 | AC-03 | JSON-RPC/HTTP JSON 正确处理 ID、HTTP 状态、错误信封、超限响应、取消和 body 关闭；没有隐式重试。 |
 | AC-04 | SDK 返回的结构化错误保留原始节点 Message/Data、数字或字符串错误码、HTTP 错误响应正文和底层 Cause；`errors.Is/As` 不因 SDK 包装丢失原错误语义。SDK 不主动附加 Header、凭据或完整请求/交易载荷，不按英文 message 猜测分类；调用层负责业务映射、返回、重试及脱敏。live 报告、fixture 和证据仍按安全输出契约脱敏。精确验收见 RE-01–RE-08。 |
 | AC-05 | Ethereum 与 BNB 分别完成全部查询、计算、提交契约及网络身份检查。 |
@@ -79,7 +80,11 @@ Tron 的五个 solidified 查询为 Account、NowBlock、BlockByNum、Transactio
 
 ### 4.1 值语义与契约冲突裁决 / Value Semantics and Contract Decisions
 
-EVM-RAW-DTO-v1 获批后，EVM 的可选请求字段、响应 DTO 和校验范围以 §4.2 及 plan §3.2 为准，替代本节对 EVM 的统一 Has 规则；其他链未被本修订替代的值语义契约不变，所有链错误遵循 §4.4。Human 当前明确要求遵循 constitution 1.3 中的 §2.4 防御分支证据约束及 §7 原始错误边界。
+PLAN-v7-REMAINING-RAW-v1 对 Bitcoin、Solana、Tron 的响应 DTO 使用原始字段与必要转换，精确规则以 plan §3.3–§3.5 为准。可选请求的 Has 标记只控制 wire 省略；可选响应字段优先使用 `json.RawMessage`，禁止由通用 Has 规则重新引入全字段 schema。
+
+DTO 成功解码不承诺节点响应满足完整官方 schema。普通字段的缺失/null 按 `encoding/json` 处理；仅本方案逐项列明的顶层 nullable、金额转换、结果存在性和提交判定边界允许必要校验。`RawMessage` 的 nil、JSON null 与显式零/false 不合并。
+
+EVM-RAW-DTO-v1 获批后，EVM 的可选请求字段、响应 DTO 和校验范围以 §4.2 及 plan §3.2 为准，替代本节对 EVM 的统一 Has 规则；其他链未被本修订替代的值语义契约不变，所有链错误遵循 §4.4。Human 当前明确要求遵循 constitution 1.4 中的 §2.4–§2.5 防御分支与注入依赖约束，以及 §7 原始错误边界。
 
 `PLAN-v6` 依据 constitution 8.5/8.6，将 SDK 自有的小字段、请求和响应 DTO 统一定义为值语义。可选请求字段使用字段值加同名 `Has<Field> bool`；nullable 方法使用链原生 DTO 值加 `present bool`，不得使用小 DTO 指针表示缺失。
 
@@ -103,7 +108,7 @@ Human 已选择“原始 RPC DTO + 必要转换”。本修订保留全部 14 �
 
 | 条款 | 可观察验收 | 追踪 |
 |---|---|---|
-| ER-01 API/注入 | Address/Hash/Data 改为命名 string 并提供 ToString；保留 New、BlockRef 构造入口、14 方法及显式 ValidateNetwork。构造拒绝 nil/typed-nil Caller，零 I/O，无默认配置或客户端。 | AC-02/05/12；T025→T026 |
+| ER-01 API/注入 | Address/Hash/Data 改为命名 string 并提供 ToString；保留 New、BlockRef 构造入口、14 方法及显式 ValidateNetwork。构造只拒绝 nil Caller，不反射探测 typed-nil，零 I/O，无默认配置或客户端。 | AC-02/05/12；T025→T026 |
 | ER-02 原始 DTO | 完整保留 plan 字段表；数量/金额保持 hex string，切片保持顺序。可选/nullable 响应字段用 json.RawMessage 保留缺失、null、显式零/false；不使用 *bool 或 Has 字段。顶层 nullable 三态不变。 | AC-05/12；T025→T026 |
 | ER-03 必要转换 | 既有标量方法继续返回 uint64 或 big.Int；转换无浮点、无截断，Config 大整数深拷贝。DTO 数值解释和单位展示归调用方；无整份 DTO 数值模型转换。 | AC-05/12；T025→T026 |
 | ER-04 简化边界 | EVM 使用标准 json.Unmarshal 解码，不做全字段 schema、duplicate-key、响应嵌套 hex/quantity 或 FeeHistory 维度验证。保留请求 wire 校验、必要标量转换、顶层 null/JSON 类型与提交 hash 检查。删除 typed-nil context 反射及无依据 fallback/default/recover。 | AC-02/04/05；T025→T026 |
@@ -113,21 +118,38 @@ ER-04 明确替代旧 EC-02/04 的“所有必需字段缺失或坏格式一律 
 
 是否已发布或已有外部使用者未知。类型底层表示、DTO 字段及 Has/Parse API 删除属于破坏性变化；不假定“尚未发布所以安全”，不自动添加兼容层。
 
-T025/T026 曾获批准并集成的事实保留；其 EVM 证据因契约变化标为 stale。RAW-ERROR-v1 使当前 T025 整包 RED/审核不能作为新基线门禁；须先完成 T017→T022，再更新并重新执行 T025 RED→审核→Human→T026 GREEN/Refactor→审核→Human。T023/T024 未受影响证据继续有效；T027 暂停，真实验收仍只在 T036。
+本段关于 stale/reopened 的描述是 EVM-RAW-DTO-v1 与 RAW-ERROR-v1 提出时的历史过程。当前以 PLAN-v7-REMAINING-RAW-v1 状态为准：T017–T026 已完成并集成，相关快照证据不重跑；T027–T036 未启动，真实验收仍只在另行授权的 T036。
 
-### 4.3 BITCOIN-CONTRACT-v1 验收 / Acceptance（候选）
+### 4.3 剩余链原始 DTO 契约 / Remaining Native DTO Contracts（候选）
 
-BITCOIN-CONTRACT-v1 保留为未批准、暂停的候选，不进入实施，也不得直接复制旧 EVM 严格解析模式。T027 仍依赖重新完成的 T026，且须另获 Bitcoin 契约明确批准；下列 BC 条款不是本次 EVM 批准范围。精确 Go 声明见 [plan §3.3](plan.md#33-bitcoin-contract-v1-首版契约--first-release-contract)。
+BITCOIN-CONTRACT-v1 从未获批，其严格解析设计由本候选替代。Bitcoin、Solana、Tron 与 test-only runner 的精确 Go 声明和 wire 契约见 plan §3.3–§3.5、§7.8。候选落盘并不授权实施；Human 批准后仅恢复 T027 RED。
 
 | 条款 / Clause | 可观察验收 / Observable acceptance | 追踪 / Trace |
 |---|---|---|
-| BC-01 方法与注入 / Methods | 十方法签名、位置参数、实际返回可断言；New 拒绝 nil/typed-nil Caller，零 I/O；nil/typed-nil context 与非法参数在 Caller 前拒绝。 | AC-02/06/12/13；T027→T028 |
+| BC-01 | Bitcoin 十方法、固定 verbosity、精确位置参数及单次调用；构造注入验证仅在 New，context 原样传递。 | AC-02/06/12/13；T027→T028 |
 | BC-02 金额 / Exact amounts | Satoshi、SatoshiPerKVByte 为 int64 且有 ToInt64；BTC/BTC-kvB 原始数字精确乘10^8，不经浮点、不舍入。1e-8 BTC=1sat，0.00001000 BTC/kvB=1000sat/kvB；非整数sat、负数、溢出失败。 | AC-06/12；T027→T028 |
-| BC-03 原生 DTO / Native DTOs | 保留 txid/wtxid、区块关联、vin/vout、coinbase、script/witness 和金额；可选字段值+Has。UTXO null 保持零值/false/nil；无估值返回节点 Blocks 与原始 Errors，bool 表示 hasEstimate；畸形响应不是合法空结果。 | AC-06/12；T027→T028 |
+| BC-03 | 原始 DTO 按 plan §3.3 字段表；可选字段 `RawMessage` 保留缺失/null/零；UTXO 顶层 null 三态；无估值保留 Blocks/Errors。 | AC-06/12；T027→T028 |
 | BC-04 历史与拒绝 / History | blockhash 可选，历史依赖 mempool/txindex/区块可用性；不探测、不 fallback，不吞节点错误。预检 allowed=false、提交明确 RPC 拒绝与结果未知分别保留。 | AC-02/06/13；T027→T028 |
-| BC-05 Wire与所有权 / Wire | 忽略未知扩展字段，拒绝重复键、尾随、坏类型/hex/缺必需键/非法null；失败结果遵循本候选原有返回契约，error 信息按 RE-01–RE-07 保留。`MempoolAcceptResult` 保留 `RejectReason`/`RejectDetails`，`FeeEstimate` 保留 `Errors` 及节点顺序，不按英文内容分类。返回切片含嵌套 witness 独立拥有存储，输入载荷不变。 | AC-02/04/06/12；T027→T028 |
+| BC-05 | 标准 JSON 解码；不做 duplicate-key 或全字段 schema；必要错误、预检 allowed、提交 txid/unknown 按 plan §3.3/§4。 | AC-02/04/06；T027→T028 |
 
-本候选当前暂停，不增加 RPC 方法、package预检、其他verbosity、网络验证方法、钱包/签名能力或依赖。若以后恢复，仍须重新核对 constitution 1.3、另获 Human 批准，并经过 T027 RED、固定 Auditor 和 Human 门禁后才启动 T028。五链范围和 T036 真实验收门禁不变。
+| SOL-01 | Solana 十一方法、显式选项、固定 wire；原始 encoded payload 不改写，构造零 I/O。 | AC-02/07/12/13；T029→T030 |
+| SOL-02 | 保留 context slot、legacy/v0、meta、账户 data、nullable value 和 lastValidBlockHeight；整数金额无浮点。 | AC-07/12；T029→T030 |
+| SOL-03 | GetBlock/GetTransaction 的顶层 null 表示不存在；账户/费率 envelope 的 value:null 保留原 context，不伪造零。 | AC-07；T029→T030 |
+| SOL-04 | 模拟 err 是原生结果；send preflight RPC error 保留 code/message/data/Cause；节点 maxRetries 与 SDK 单次请求区分。 | AC-04/07；T029→T030 |
+| SOL-05 | 标准解码、明确请求校验、提交签名校验；不解析/构造 message，不刷新 blockhash，不签名或轮询。 | AC-02/07/13；T029→T030 |
+| TR-01 | Tron 十三查询、两计算、一提交的精确 POST 路径；五个 solidified 方法独立接线。 | AC-02/08/12/13；T031→T032 |
+| TR-02 | 地址编码与 visible 原样传递；空对象账户与 address 存在的零余额账户区分；sun、Energy、Bandwidth 不混为金额。 | AC-08/12；T031→T032 |
+| TR-03 | HTTP 200 内 Error、计算 result 与广播拒绝保留原始 code/message/JSON；既有依赖 error 完整可达。 | AC-04/08；T031→T032 |
+| TR-04 | 原始交易 JSON 作为 `RawMessage` 提交一次，不重建 raw_data、签名、TAPOS 或 txID；RPC 接受不等于执行或 solidified。 | AC-08/13；T031→T032 |
+| TR-05 | 标准 JSON 解码，仅顶层对象、明确存在性及提交判定检查；不做完整 protobuf/schema 校验。 | AC-02/08；T031→T032 |
+| LR-01 | 五链 runner 使用固定方法目录和具体客户端；关闭开关零配置/材料/网络读取。 | AC-09；T033→T034 |
+| LR-02 | manifest 摘要独立冻结；真实预期来自浏览器与独立账号 RPC，runner 不用被测 SDK 生成预期。 | AC-09/10；T033→T036 |
+| LR-03 | 历史字段等值与动态状态分开；漏方法、漏样本、缺预检查不能 PASS。 | AC-09/10；T033→T036 |
+| LR-04 | 提交须双开关、逐链授权、专用材料和身份检查；身份失败禁止提交；在已有 evidence/broadcast.json 追加并同步成功的 claim 先于发送，同一授权或 payload 已消费时禁止再发；未知结果仅按原 ID 查询一次，不补发。账本单写者由 T036 Controller 门禁保证，损坏或无法持久化时 BLOCKED。 | AC-09/11；T033→T036 |
+| LR-05 | 原始 SDK error 仅在内存断言；证据不序列化原始错误、配置或载荷。read.json 为固定 suiteReport JSON，broadcast.json 为追加式 claim/report JSON Lines；精确字段见 plan §7.8，不新增证据路径。 | AC-04/09，RE-08；T033→T036 |
+| LR-06 | harness 的限额、deadline、账本原样复用，不新增调度、重试或后台 worker。 | AC-09；T033→T034 |
+
+本候选不增加链级 Raw 入口、网络探测、钱包/签名能力、依赖、默认客户端或重试。每个测试 Task 完成后仍须固定 Auditor 与 Human 门禁，对应实现 Task 不自动启动。五链真实验收只在另行授权的 T036 执行。
 
 ### 4.4 RAW-ERROR-v1 验收 / Raw Error Acceptance（已批准）
 
@@ -154,6 +176,18 @@ data={"reason":"synthetic detail","n":9007199254740993}
 结果：SDK Cause 为收到的原 error；errors.Is 命中 io.ErrUnexpectedEOF，
 errors.As 可提取该类型；不主动追加配置 Header 或请求正文。
 ```
+
+### 4.5 具体行为样例 / Concrete Cases
+
+- Bitcoin `value:0.00000001` → 1 sat；`value:1e-9` → Protocol；未知 DTO 字段与可选响应字段缺失不触发全 schema 失败。
+- Bitcoin `gettxout` 的 `null` → `(TxOut{}, false, nil)`；`estimatesmartfee` 无 feerate、含 blocks/errors → 保留节点对象且 `hasEstimate=false`。
+- Solana `getAccountInfo` 的 `{"context":{"slot":9},"value":null}` → `Context.Slot=9`、Value 原始 null；不能返回虚构的零余额账户。
+- Solana `getTransaction` 的 `version:"legacy"` 与 `version:0` 分别原样保留；`meta.err` 非 null 表示链上执行结果，不转成传输错误。
+- Tron `getaccount {}` → `(Account{}, false, nil)`；`{"address":"41...","balance":0}` 与仅有 address 的合法账户均 `present=true`。
+- Tron 广播 `{"result":false,"code":"CONTRACT_VALIDATE_ERROR","message":"synthetic"}` → RPC error，NodeCode/Message/Data 原样，`SubmissionUnknown=false`。
+- 提交进入依赖后返回 HTTP/Transport/Protocol，或成功结果无法确定接受身份 → `SubmissionUnknown=true`，调用次数仍为一。
+- live 关闭时即使注入的配置/材料 reader 会失败，也不得调用 reader。
+- 正式验收缺一链样本、预检查、授权或材料 → BLOCKED；不能以四链通过或离线 fixture 代替。
 
 ## 5. 真实数据验收规则
 
@@ -189,4 +223,4 @@ T023/T024 仅建立测试装配基础，不读取真实凭据、不执行真实 
 
 C-01–C-10 是所有活动 Task 的不变量；C-08/C-09/C-10 分别由 AC-12/AC-12/AC-13 验收。真实验收只在 T036 执行，离线通过不得表述为 AC-10/AC-11 已通过。
 
-既有批准与集成记录保留为历史。RAW-ERROR-v1 已批准并重开 T017–T022；T017/T018 已完成 RED、Auditor 与 Human 门禁并获准集成，T019 未授权。其余受影响错误证据 stale，未受影响的 DI、协议路径、资源与并发证据可复用。T023/T024 保持完成。当前 T025 整包 RED/审核对新基线 stale，待 T019–T022 完成后重建受影响证据；T026 暂停。BITCOIN-CONTRACT-v1 与 T027 继续暂停，T028–T036 保持依赖阻塞。仍为 5 Plan / 20 Task，不授权真实 RPC、广播、提交、推送或 PR。
+当前状态：PLAN-v7-REMAINING-RAW-v1 已获 Human 批准；T017–T027 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成。T028 已单独授权进入实现，T029–T036 仍按依赖和逐 Task 门禁阻塞。BITCOIN-CONTRACT-v1 从未获批，其内容已由 PLAN-v7 替代。真实数据、账号 RPC 和受控提交仍延后至 T036 且须另获具体授权；推送、PR 与真实 RPC/广播仍未授权。

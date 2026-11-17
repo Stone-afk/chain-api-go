@@ -3,14 +3,15 @@
 **规格文档 / Spec**：[spec.md](spec.md)  
 **技术方案 / Plan**：[plan.md](plan.md)  
 **任务清单 / Tasks**：[tasks.md](tasks.md)  
-**基线版本 / Baseline Version**：PLAN-v6+CONTEXT-CAUSE-v1+HARNESS-CONTRACT-v1+EVM-CONTRACT-v1+BITCOIN-CONTRACT-v1+EVM-RAW-DTO-v1+RAW-ERROR-v1
+**基线版本 / Baseline Version**：PLAN-v7-REMAINING-RAW-v1
 **日期 / Date**：2026-11-17
-**状态 / Status**：T017/T018 已通过 RED、Auditor 与 Human 门禁并获准集成；T019 及以后任务未授权（T017/T018 Complete）
+**状态 / Status**：PLAN-v7 已获 Human 批准；T017–T027 已完成并集成；T028 已授权进入实现，T029–T036 仍阻塞 / T028 authorized
 
 ## 0. 变更记录 / Change Log
 
 | 版本 / Version | 日期 / Date | 变更 / Change |
 |---|---|---|
+| PLAN-v7-REMAINING-RAW-v1 | 2026-11-17 | Human 已批准：同步 T017–T026 完成事实；替代未批准 BITCOIN-CONTRACT-v1 的严格解析设计；冻结 T027–T036 全部接口、DTO、wire、runner、文档与最终验收。保持 5 Plan / 20 Task、全部稳定 ID 和依赖，无新增依赖或核心配置来源。T027 已完成 RED、独立 Auditor 与 Human 门禁并获准集成；T028 已单独授权。真实 RPC 与广播仍未授权。 |
 | RAW-ERROR-v1 | 2026-11-17 | Human 已批准：恢复原始节点 Message/Data、HTTP 错误正文及底层 Cause；区分 SDK 返回与 live 脱敏输出。重开 T017–T022，修订 T025/T026；T025 当前 RED/审核不能作为新基线门禁。T023/T024 未受影响证据保留，SDK→harness 输出隔离在 T033/T034 验证。保持 5 Plan / 20 Task、T017–T036 ID 与原路径；T027 继续暂停。constitution 1.3 同时获批；T017/T018 已完成门禁并获准集成，T019 未授权。 |
 | EVM-RAW-DTO-v1 | 2026-11-17 | Human 已批准：将 EVM 收敛为原始 RPC DTO + 必要转换，接受破坏性 API 变更且不提供兼容层；重开 T025/T026，旧证据 stale。T025 可进入 RED，T026 仍等待审核和 Human 门禁；Bitcoin 候选暂停。保持 5 Plan / 20 Task、路径和依赖，不改 constitution。 |
 | BITCOIN-CONTRACT-v1 | 2026-11-17 | 候选：补齐 PLAN-003 十方法、DTO、金额/费率、历史和 wire 契约；T027 暂停待批准。只改三件套；保持 5 Plan / 20 Task、全部依赖、T027 七路径、T028 五路径和 T017–T026 有效证据。 |
@@ -28,9 +29,11 @@
 - 实现 Task 必须使对应先行测试 GREEN，不得修改或弱化受保护断言。
 - 声明骨架仅可定义测试编译所需的已批准类型/签名和显式未实现分支，不得实现协议、网络、解析或链行为。
 - 每项 Scope 是默认拒绝列表；花括号按显式文件展开，不代表目录递归写权限。未列路径禁止修改。
-- 每项继承 spec C-01–10、Human 批准后的 constitution 1.3 及 plan §7.4 Task Contract；新增依赖、公开 API、配置、路径、后台行为或例外必须重新审批。
-- 未修订任务保留原预算；EVM-RAW-DTO-v1/T025–T026 使用 plan §3.2 的共享 20/20/30 分钟时箱，不按 40%/5%/55% 换算。行数及路径数量只作风险预警。
-- RAW-ERROR-v1 错误增量在 T017–T022 和 T025/T026 间共享规划 20 分钟、生产编码 20 分钟、测试执行与独立审核 30 分钟，不按 Task 重置；T023/T024 不重开，T027 继续暂停。
+- 每项继承 spec C-01–10、Human 批准后的 constitution 1.4 及 plan §7.4 Task Contract；新增依赖、公开 API、配置、路径、后台行为或例外必须重新审批。
+- T017–T026 已完成，历史预算不重开。T027–T034 的测试/实现必须使用 plan §3.3–§3.5、§7.8 的候选获批版本；每个测试 Task 只允许声明骨架和测试，生产 Task 不修改受保护测试。
+- 每个测试 Task 完成后停在独立 Auditor 与 Human 门禁；对应实现 Task 不因依赖满足而自动启动。每个实现 Task GREEN、聚焦 vet、独立 Auditor 和 Human 门禁通过才可 DONE。未经明确授权不做 Git 集成。
+- T027/T028、T029/T030、T031/T032、T033/T034 各功能对共享 20/20/30 分钟硬时箱；T035/T036 各自最多 70 分钟。共享时箱不按 Task/方法/修复轮次重置，已随 PLAN-v7 获 Human 批准。40/5/55 仅作资源估算，行数与路径数只作风险预警。
+- 每次交接绑定独立 pre-task tree、代码/测试摘要、依赖状态、配置/fixture 身份、Go 版本/环境和真实命令结果。普通编译、工具或环境失败不是 RED。
 
 ## 2. PLAN-001 公共基础 / Shared Foundation
 
@@ -56,17 +59,17 @@
 
 ### Tests First / 测试先行
 
-- [ ] **T019 JSON-RPC 原始错误协议测试 / Test JSON-RPC raw-error contracts**
+- [x] **T019 JSON-RPC 原始错误协议测试 / Test JSON-RPC raw-error contracts**
   - Scope：`jsonrpc/client_test.go`、`jsonrpc/protocol_test.go`；不修改生产文件。
   - Dependencies：T018。
-  - Acceptance：AC-02–AC-04、AC-12，RE-01–06；在保留 nil/typed-nil、V2/Bitcoin 方言、ID、信封、限长、取消、body、并发和单次请求风险的基础上，增加 code=0、Message 原样、Data 缺失/null/大数字/对象、HTTP/RPC 正文、截断标志、部分读错误、原始 Cause/context Is/As 及“不主动附加请求秘密”。
+  - Acceptance：AC-02–AC-04、AC-12，RE-01–06；保留普通 nil、V2/Bitcoin 方言、ID、信封、限长、取消、body、并发和单次请求风险，不反射探测 typed-nil 依赖；增加 code=0、Message 原样、Data 缺失/null/大数字/对象、HTTP/RPC 正文、截断标志、部分读错误、原始 Cause/context Is/As 及“不主动附加请求秘密”。
   - Verification：`go test ./jsonrpc`，产生目标行为缺失的 RED。
   - Budget：计入 RAW-ERROR-v1 共享时箱；0生产行、约100–180测试增量行、2文件。
   - Done when：RAW-ERROR-v1 新增或改变的目标行为具有可归因 RED；未改变的既有断言保留，不要求重新产生 RED。
 
 ### Implementation / 实现
 
-- [ ] **T020 实现 JSON-RPC 原始错误保留 / Implement JSON-RPC raw-error preservation**
+- [x] **T020 实现 JSON-RPC 原始错误保留 / Implement JSON-RPC raw-error preservation**
   - Scope：`jsonrpc/client.go`、`jsonrpc/protocol.go`。
   - Dependencies：T019。
   - Acceptance：AC-02–AC-04、AC-12，RE-01–06；实现 New/Call/RawCall 的原始节点字段、受限正文与完整 Cause 保留，T019 GREEN。
@@ -76,17 +79,17 @@
 
 ### Tests First / 测试先行
 
-- [ ] **T021 HTTP JSON 原始错误协议测试 / Test HTTP JSON raw-error contracts**
+- [x] **T021 HTTP JSON 原始错误协议测试 / Test HTTP JSON raw-error contracts**
   - Scope：`httpjson/client_test.go`；不修改生产文件。
   - Dependencies：T018。
-  - Acceptance：AC-02–AC-04、AC-12，RE-02–06；保留 nil/typed-nil、同源及 prefix、路径穿越、取消和 body 风险，增加非 JSON HTTP 正文、刚好限长/超限、部分读取、原始 Cause/context Is/As 及“不主动附加请求秘密”。默认串行在 T020 后执行。
+  - Acceptance：AC-02–AC-04、AC-12，RE-02–06；保留普通 nil、同源及 prefix、路径穿越、取消和 body 风险，不反射探测 typed-nil 依赖；增加非 JSON HTTP 正文、刚好限长/超限、部分读取、原始 Cause/context Is/As 及“不主动附加请求秘密”。默认串行在 T020 后执行。
   - Verification：`go test ./httpjson`，产生目标行为缺失的 RED。
   - Budget：计入 RAW-ERROR-v1 共享时箱；0生产行、约60–120测试增量行、1文件。
   - Done when：RAW-ERROR-v1 新增或改变的目标行为具有可归因 RED；未改变的路径与资源断言保留，不要求重新产生 RED。
 
 ### Implementation / 实现
 
-- [ ] **T022 实现 HTTP JSON 原始错误保留 / Implement HTTP JSON raw-error preservation**
+- [x] **T022 实现 HTTP JSON 原始错误保留 / Implement HTTP JSON raw-error preservation**
   - Scope：`httpjson/client.go`。
   - Dependencies：T021。
   - Acceptance：AC-02–AC-04、AC-12，RE-02–06；实现 New/Post/RawPost 的受限错误正文与完整 Cause 保留，T021 GREEN。
@@ -116,11 +119,11 @@
 
 ## 3. PLAN-002 Ethereum 与 BNB / Ethereum and BNB
 
-T025/T026 曾完成并集成的记录保留为历史；EVM-RAW-DTO-v1 与 RAW-ERROR-v1 改变契约，二者当前状态 reopened。当前 T025 整包 RED/审核对新错误基线 stale；先完成 T017–T022，再重建 T025 受影响证据。数量仍为 5 Plan / 20 Task。
+T025/T026 的 reopened/stale 说明是历史过程；二者当前已完成对应 RED/GREEN、Auditor、Human 门禁并集成。本轮不重开，数量仍为 5 Plan / 20 Task。
 
 ### Tests First / 测试先行
 
-- [ ] **T025 重建原始 EVM DTO 契约测试 / Reopen raw EVM DTO contract tests**
+- [x] **T025 重建原始 EVM DTO 契约测试 / Reopen raw EVM DTO contract tests**
   - Scope：沿用原十路径：`evm/types_test.go`、`evm/query_test.go`、`evm/compute_test.go`、`evm/submit_test.go`、`ethereum/client_test.go`、`bnb/client_test.go`、`evm/types.go`、`evm/client.go`、`ethereum/client.go`、`bnb/client.go`。本次仅修改前六测试文件，后四生产文件不得修改；不新增路径。
   - Dependencies：当前 T020、当前 T022、T024；EVM-RAW-DTO-v1 与 RAW-ERROR-v1 明确批准。
   - Acceptance：AC-02/04/05/12/13，RE-01/02/05–07，spec ER-01–05/plan §3.2；仅撤换明确列出的被替代断言，保留 DI/14 方法/nullable/单次提交/网络身份保护，并证明链包装保留原始节点字段与完整依赖错误链、不主动附加请求秘密。
@@ -130,7 +133,7 @@ T025/T026 曾完成并集成的记录保留为历史；EVM-RAW-DTO-v1 与 RAW-ER
 
 ### Implementation / 实现
 
-- [ ] **T026 简化 EVM 与两具体客户端 / Simplify EVM and concrete clients**
+- [x] **T026 简化 EVM 与两具体客户端 / Simplify EVM and concrete clients**
   - Scope：`evm/client.go`、`evm/types.go`、`evm/query.go`、`evm/compute.go`、`evm/submit.go`、`ethereum/client.go`、`bnb/client.go`；不改测试、其他包、依赖或 constitution。
   - Dependencies：T025 的新 RED、独立审核及 Human 门禁。
   - Acceptance：AC-02/04/05/12/13，RE-01/02/05–07；严格实现 spec ER-01–05、RE-01–07 与 plan §3.2/§4，标准解码替换手写 schema，保留完整 Caller 错误链；全部 T025 断言实际执行并 GREEN。保留现有未提交修改的快照与来源，只按批准候选授权处理相关 EVM 行为。
@@ -140,118 +143,118 @@ T025/T026 曾完成并集成的记录保留为历史；EVM-RAW-DTO-v1 与 RAW-ER
 
 ## 4. PLAN-003 Bitcoin
 
-BITCOIN-CONTRACT-v1 保留为未批准且暂停的候选，T027 不得实施。T027 仍依赖重新完成的 T026 及另行批准的 Bitcoin 契约；T028–T036 保持原依赖链阻塞。不得把旧 EVM 解析模式复制到其他链。
+BITCOIN-CONTRACT-v1 从未获批并已由已批准的 PLAN-v7-REMAINING-RAW-v1 替代。T027 已完成 RED、独立 Auditor 与 Human 门禁并集成；T028 已单独授权。T029–T036 仍按原依赖链和各自门禁阻塞。不得把旧严格解析或无证据防御复制到其他链。
 
 ### Tests First / 测试先行
 
-- [ ] **T027 完整 Bitcoin 客户端测试 / Test complete Bitcoin client**
-  - Scope：恰好原七路径：`bitcoin/client_test.go`、`bitcoin/types_test.go`、`bitcoin/query_test.go`、`bitcoin/compute_test.go`、`bitcoin/submit_test.go`；仅声明骨架 `bitcoin/client.go`、`bitcoin/types.go`，只含plan §3.3完整类型/字段/签名与Unsupported/零值分支，不实现解析/校验/请求行为。
+- [x] **T027 完整 Bitcoin 客户端测试 / Test complete Bitcoin client**
+  - Scope：恰好七路径：`bitcoin/client_test.go`、`bitcoin/types_test.go`、`bitcoin/query_test.go`、`bitcoin/compute_test.go`、`bitcoin/submit_test.go`、`bitcoin/client.go`、`bitcoin/types.go`；后两文件仅含 plan §3.3 完整声明骨架和 Unsupported/零值分支，不实现解析、校验或请求行为。
   - Dependencies：T026。
-  - Acceptance：AC-02、AC-04、AC-06、AC-12、AC-13，RE-01/02/06/07；覆盖spec §4.3/§4.4、plan §3.3/§4 的十方法/DTO、精确金额费率、script/witness、历史blockhash/txindex、nullable、原始 errors/reject 字段、所有权、预检拒绝、单次提交unknown；按风险矩阵去重。BITCOIN-CONTRACT-v1 仍须另获批准。
+  - Acceptance：AC-02/04/06/12/13、BC-01–05、RE-01/02/06/07；覆盖 plan §3.3 的十方法 wire、原始 DTO、集中精确金额转换、历史/null/估费、预检拒绝、原始错误、单次提交 unknown；标准解码正例证明未知/非必要字段不触发全 schema。
   - Verification：`go test ./bitcoin`，产生目标行为缺失的 RED。
-  - Budget：最多70分钟：规划20分钟、Coder20分钟、验证及固定Auditor最多30分钟。声明预计160–220行、测试650–900行；220/900仅现实预警，不是目标或延时依据，原7路径不变。
-  - Done when：候选获Human批准后七文件编译并进入目标断言RED；BC-01–05证据绑定代码/测试/依赖/配置fixture/环境快照，经固定只读Auditor后停在T027 Human门禁。构造骨架遮蔽的细部断言须在T028实际执行，不得把候选视为T027完成。
+  - Budget：与 T028 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；180–260 声明、500–750 测试行预警、7路径。
+  - Done when：七文件编译并进入可归因 RED，BC-01–05 证据绑定当前快照，经固定只读 Auditor 后停在 T027 Human 门禁；骨架遮蔽的细部断言须在 T028 实际执行。
 
 ### Implementation / 实现
 
 - [ ] **T028 实现完整 Bitcoin 客户端 / Implement complete Bitcoin client**
-  - Scope：`bitcoin/client.go`、`types.go`、`query.go`、`compute.go`、`submit.go`。
+  - Scope：`bitcoin/client.go`、`bitcoin/types.go`、`bitcoin/query.go`、`bitcoin/compute.go`、`bitcoin/submit.go`。
   - Dependencies：T027。
-  - Acceptance：AC-02、AC-04、AC-06、AC-12、AC-13，RE-01/02/06/07；实现 Human 批准的 spec BC-01–05/RE-01–07 与 plan §3.3/§4，T027全部受保护断言实际执行且GREEN；先通过候选批准与T027 RED/固定Auditor/Human门禁。
-  - Verification：`go test ./bitcoin`。
-  - Budget：7h；约700生产行、0新测试行、5文件；规模预警已纳入审批。
-  - Done when：金额无浮点损失、历史限制明确、提交单次调用。
+  - Acceptance：AC-02/04/06/12/13、BC-01–05、RE-01/02/06/07；实现批准的 plan §3.3/§4，T027 全部受保护断言实际执行且 GREEN，不改测试。
+  - Verification：`go test ./bitcoin`；`go vet ./bitcoin`。
+  - Budget：与 T027 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；350–500生产行预警、0新测试行、5文件。
+  - Done when：金额无浮点、历史限制不被吞、单次提交语义通过；聚焦测试/vet、独立 Auditor 和 Human 门禁完成。
 
 ## 5. PLAN-004 Solana
 
 ### Tests First / 测试先行
 
 - [ ] **T029 完整 Solana 客户端测试 / Test complete Solana client**
-  - Scope：`solana/client_test.go`、`types_test.go`、`query_test.go`、`compute_test.go`、`submit_test.go`；允许 `client.go`、`types.go` 声明骨架。
+  - Scope：`solana/client_test.go`、`solana/types_test.go`、`solana/query_test.go`、`solana/compute_test.go`、`solana/submit_test.go`、`solana/client.go`、`solana/types.go`；后两文件仅声明骨架。
   - Dependencies：T028。
-  - Acceptance：AC-02、AC-04、AC-07、AC-12、AC-13，RE-01/02/06/07；覆盖编码、legacy/v0、context、commitment、meta、有效高度、nullable present 三态、模拟和提交选项，并保留 Solana RPC/preflight 原始 message/data/Cause。
+  - Acceptance：AC-02/04/07/12/13、SOL-01–05、RE-01/02/06/07；覆盖十一方法 wire、选项省略/显式零、legacy/v0/meta、context/value null、编码边界、模拟/preflight、一次提交 unknown 和原始错误链。
   - Verification：`go test ./solana`，产生目标行为缺失的 RED。
-  - Budget：4h；≤80生产行、≤900测试行、7文件。
-  - Done when：版本、context 和动态状态风险均有可归因 RED。
+  - Budget：与 T030 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；180–260声明、550–800测试行预警、7文件。
+  - Done when：版本、context、nullable、选项和提交风险均有可归因 RED，经固定 Auditor 后停在 Human 门禁。
 
 ### Implementation / 实现
 
 - [ ] **T030 实现完整 Solana 客户端 / Implement complete Solana client**
-  - Scope：`solana/client.go`、`types.go`、`query.go`、`compute.go`、`submit.go`。
+  - Scope：`solana/client.go`、`solana/types.go`、`solana/query.go`、`solana/compute.go`、`solana/submit.go`。
   - Dependencies：T029。
-  - Acceptance：AC-02、AC-04、AC-07、AC-12、AC-13，RE-01/02/06/07；T029 GREEN。
-  - Verification：`go test ./solana`。
-  - Budget：7h；约800生产行、0新测试行、5文件；规模预警已纳入审批。
-  - Done when：commitment、版本、meta 和有效高度均保留。
+  - Acceptance：AC-02/04/07/12/13、SOL-01–05、RE-01/02/06/07；T029 全部受保护断言 GREEN，不解析/构造 message，不补默认选项、不重试。
+  - Verification：`go test ./solana`；`go vet ./solana`。
+  - Budget：与 T029 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；350–500生产行预警、0新测试行、5文件。
+  - Done when：commitment、version、meta、context/value 与有效高度保留，聚焦测试/vet、Auditor、Human 门禁完成。
 
 ## 6. PLAN-005 Tron 与最终集成 / Tron and Final Integration
 
 ### Tests First / 测试先行
 
 - [ ] **T031 完整 Tron 客户端测试 / Test complete Tron client**
-  - Scope：`tron/client_test.go`、`types_test.go`、`query_test.go`、`compute_test.go`、`submit_test.go`；允许 `client.go`、`types.go` 声明骨架。
+  - Scope：`tron/client_test.go`、`tron/types_test.go`、`tron/query_test.go`、`tron/compute_test.go`、`tron/submit_test.go`、`tron/client.go`、`tron/types.go`；后两文件仅声明骨架。
   - Dependencies：T030。
-  - Acceptance：AC-02、AC-04、AC-08、AC-12、AC-13，RE-01–07；覆盖地址/visible、空账户与零余额的 present 三态、资源单位、13条明确查询路径、五个 solidified 查询、计算、无损交易 JSON、HTTP 200 拒绝原始 code/message/JSON、HTTP 正文/Cause 和 unknown。
+  - Acceptance：AC-02/04/08/12/13、TR-01–05、RE-01–07；覆盖十三查询、两计算、一提交的路径/body/调用次数、visible 地址、五 solidified 独立接线、`{}` 与零余额、proto3 默认值、HTTP 200 Error/result、原始交易 JSON、Cause 与 unknown。
   - Verification：`go test ./tron`，产生目标行为缺失的 RED。
-  - Budget：5h；≤80生产行、≤1,000测试行、7文件。
-  - Done when：地址、状态和提交风险均有可归因 RED。
+  - Budget：与 T032 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；180–260声明、550–850测试行预警、7文件。
+  - Done when：地址、present、资源、solidified、拒绝和提交风险均有可归因 RED，经固定 Auditor 后停在 Human 门禁。
 
 ### Implementation / 实现
 
 - [ ] **T032 实现完整 Tron 客户端 / Implement complete Tron client**
-  - Scope：`tron/client.go`、`types.go`、`query.go`、`compute.go`、`submit.go`。
+  - Scope：`tron/client.go`、`tron/types.go`、`tron/query.go`、`tron/compute.go`、`tron/submit.go`。
   - Dependencies：T031。
-  - Acceptance：AC-02、AC-04、AC-08、AC-12、AC-13，RE-01–07；T031 GREEN。
-  - Verification：`go test ./tron`。
-  - Budget：8h；约850生产行、0新测试行、5文件；规模预警已纳入审批。
-  - Done when：链错误、solidified 状态和交易 JSON 保持原义。
+  - Acceptance：AC-02/04/08/12/13、TR-01–05、RE-01–07；T031 全部受保护断言 GREEN，不改测试，不构造交易/TAPOS/签名，不按 message 分类。
+  - Verification：`go test ./tron`；`go vet ./tron`。
+  - Budget：与 T031 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；350–500生产行预警、0新测试行、5文件。
+  - Done when：十六方法、原始链错误、solidified 状态和交易 JSON 保持原义，聚焦测试/vet、Auditor、Human 门禁完成。
 
 ### Tests First / 测试先行
 
 - [ ] **T033 五链 live runner 离线契约测试 / Test offline contracts for five-chain live runners**
-  - Scope：`internal/test/live/read_contract_test.go`、`submission_contract_test.go`；允许 `evm.go`、`bitcoin.go`、`solana.go`、`tron.go` 声明骨架。
+  - Scope：`internal/test/live/read_contract_test.go`、`internal/test/live/submission_contract_test.go`、`internal/test/live/evm.go`、`internal/test/live/bitcoin.go`、`internal/test/live/solana.go`、`internal/test/live/tron.go`；后四文件仅声明骨架。
   - Dependencies：T024、T026、T028、T030、T032。
-  - Acceptance：AC-09–AC-11，RE-08；合成 fixture 覆盖五链字段、历史/动态分类、独立 preflight、漏跑、双开关和提交材料门禁；callback 可在内存检查原始 Message/Data/ResponseBody/Cause，runner/harness 输出仅保留固定类别且不泄露合成标记。
-  - Verification：`go test ./internal/test/live -run '^(TestReadContract|TestSubmissionContract)'`，产生目标行为缺失的 RED。
-  - Budget：5h；≤80生产行、≤1,000测试行、6文件。
-  - Done when：测试不访问公网且所有正式门禁均有可归因 RED。
+  - Acceptance：AC-09–11、LR-01–06、RE-08；按 plan §7.8.1–§7.8.7 的精确声明和固定字典，以合成依赖覆盖全部方法目录、manifest/dynamic/material、历史/动态、独立 preflight、漏项、双开关零读取、身份失败阻止提交、claim 持久化先于 send、已有 claim 禁止重发、unknown 仅查原 ID 一次及报告输出隔离；不新增文件或修改 harness。
+  - Verification：`go test ./internal/test/live -run '^(TestReadContract|TestSubmissionContract)' -count=1`，产生目标行为缺失的 RED；不得外部读取。
+  - Budget：与 T034 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；≤120声明、500–800测试行预警、6文件。
+  - Done when：LR-01–06 的离线门禁均有可归因 RED，经固定 Auditor 后停在 Human 门禁。
 
 ### Implementation / 实现
 
 - [ ] **T034 实现五链 live runner / Implement five-chain live runners**
-  - Scope：`internal/test/live/evm.go`、`bitcoin.go`、`solana.go`、`tron.go`、`live_test.go`。
+  - Scope：`internal/test/live/evm.go`、`internal/test/live/bitcoin.go`、`internal/test/live/solana.go`、`internal/test/live/tron.go`、`internal/test/live/live_test.go`。
   - Dependencies：T033。
-  - Acceptance：AC-09–AC-11、RE-08 的离线契约；建立 TestLiveRead/TestLiveBroadcast，并在原 runner 路径内实现原始 SDK 错误到固定报告类别的输出隔离；本 Task 不采样、不读真实凭据、不联网。
-  - Verification：`go test ./internal/test/live -run '^(TestReadContract|TestSubmissionContract)'`。
-  - Budget：8h；约800生产行、0新测试行、5文件；规模预警已纳入审批。
-  - Done when：T033 GREEN，真实证据仍明确 deferred。
+  - Acceptance：AC-09–11、LR-01–06、RE-08；实现 plan §7.8 的具体客户端装配、固定 catalog、材料解析与输出隔离；建立 TestLiveRead/TestLiveBroadcast，但本 Task 不采样、不读真实凭据、不联网。
+  - Verification：`go test ./internal/test/live -run '^(TestReadContract|TestSubmissionContract)' -count=1`；`CHAIN_API_GO_LIVE_TEST=0 CHAIN_API_GO_LIVE_BROADCAST=0 go test ./internal/test/live -run '^TestLive(Read|Broadcast)$' -count=1`；`go vet ./internal/test/live`。关闭开关零读取由 T033 的可注入入口断言证明，不能仅以 Skip 当作证据；禁止继承宿主开启值执行真实装配。
+  - Budget：与 T033 共享 plan §7.7 的 20/20/30；本 Task 资源估算 25 分钟（规划10、编码1.25、验证13.75）；450–650生产行预警、5文件。
+  - Done when：T033 GREEN，关闭开关零读取，聚焦 vet、Auditor、Human 门禁完成；真实证据保持 deferred。
 
 ### Documentation and Offline Verification / 文档与离线核验
 
-- [ ] **T035 文档、治理入口与离线交付核验 / Document and verify the offline delivery**
-  - Scope：`README.md`、`AGENTS.md`、`doc.go`、`transport/doc.go`、`apierror/doc.go`、`jsonrpc/doc.go`、`httpjson/doc.go`、`evm/doc.go`、`ethereum/doc.go`、`bnb/doc.go`、`bitcoin/doc.go`、`solana/doc.go`、`tron/doc.go`、`internal/test/live/evidence/offline.md`；不得修改 constitution。
+- [ ] **T035 文档与离线交付核验 / Document and verify the offline delivery**
+  - Scope：`README.md`、`doc.go`、`transport/doc.go`、`apierror/doc.go`、`jsonrpc/doc.go`、`httpjson/doc.go`、`evm/doc.go`、`ethereum/doc.go`、`bnb/doc.go`、`bitcoin/doc.go`、`solana/doc.go`、`tron/doc.go`、`internal/test/live/evidence/offline.md`；`AGENTS.md`、`constitution.md`、`docs/architecture.md` 仅只读核对，不得修改。
   - Dependencies：T034。
-  - Acceptance：AC-01–AC-09、AC-12、AC-13，RE-01–08；核对方法、单位、nullable、DI、Raw、原始错误字段、Error() 非脱敏语义、调用层责任、兼容性、提交边界、依赖图、8.5/8.6 和核心构造签名隔离。
+  - Acceptance：AC-01–09/12/13、RE-01–08；文档覆盖五链构造器/全部首版方法、Raw 协议入口、单位、RawMessage 缺失/null、Tron proto3 零省略、原始 error 非安全日志、提交 once/unknown/接受-执行-确认差异、test-only schema/alias/材料单次使用；准确标明真实验收未执行。
   - Verification：`go vet ./...`；`go list -deps ./...`；API/范围核查；只补跑 stale 聚焦证据。
-  - Budget：4h；0生产/测试行，约600文档行，14路径单元；路径预警已纳入审批。
-  - Done when：有效证据汇总完成，固定 Auditor 可获得完整只读审核包。
+  - Budget：最多70分钟，plan §7.7 的 20/20/30 分段；资源估算 25 分钟（规划10、编码1.25、验证13.75），0生产/测试行、350–550文档行预警、13路径。
+  - Done when：离线证据汇总完成，公开 API/依赖/边界与批准基线一致，固定 Auditor 与 Human 门禁完成。
 
 ### Final Acceptance / 最终验收
 
 - [ ] **T036 五链最终真实验收、最终审计与 Human 门禁 / Run final five-chain acceptance, audit, and Human gate**
-  - Scope：`internal/test/live/testdata/ethereum/samples.json`、`bnb/samples.json`、`bitcoin/samples.json`、`solana/samples.json`、`tron/samples.json`、`internal/test/live/evidence/read.json`、`broadcast.json`、`final.md`；外部配置与交易载荷只读。
+  - Scope：`internal/test/live/testdata/ethereum/samples.json`、`internal/test/live/testdata/bnb/samples.json`、`internal/test/live/testdata/bitcoin/samples.json`、`internal/test/live/testdata/solana/samples.json`、`internal/test/live/testdata/tron/samples.json`、`internal/test/live/evidence/read.json`、`internal/test/live/evidence/broadcast.json`、`internal/test/live/evidence/final.md`；外部配置与交易载荷只读。
   - Dependencies：T035，且全部子 Plan 已完成离线验证、审核和批准。
-  - Acceptance：AC-10、AC-11，RE-08；浏览器采样、独立账号 RPC preflight、SDK 字段核对、独立授权提交及按原标识查询；SDK 原始错误可供断言，最终 evidence 仍脱敏。禁止修改 SDK/runner。
+  - Acceptance：AC-10/11、RE-08、FA-01–06；每链三笔浏览器样本、非 SDK 账号 RPC preflight、原始字节摘要冻结、五链固定 catalog、逐链独立授权提交与原 ID 单次查询；启动前 Controller 确认广播工作区单写者及材料未消费，broadcast.json 以追加 JSON Lines 保存提交前 claim 和最终报告；已有 claim 不得重播，截断账本为 BLOCKED。最终 evidence 脱敏。禁止修改 SDK/runner。
   - Verification：`CHAIN_API_GO_LIVE_TEST=1 go test ./internal/test/live -run '^TestLiveRead$' -count=1`；双开关广播命令见 plan §8。
-  - Budget：8h；0生产/测试行，约800证据行，8文件。
-  - Done when：必需项全部 PASS、固定 Auditor 给出通过建议且 Human 最终批准；缺权限或材料为 BLOCKED。
+  - Budget：最多70分钟，plan §7.7 的 20/20/30 分段；资源估算 50 分钟（规划20、编码2.5、验证27.5），0生产/测试行，数据/证据按实际样本、8文件；等待授权/材料不构成自动延时。
+  - Done when：FA-01–06 必需项全部 PASS，固定 Auditor 给出通过建议且 Human 最终批准；缺权限、材料、网络身份或任一链必需项为 BLOCKED。
 
 ## 7. 最终验证清单 / Final Validation Checklist
 
 - [ ] 测试 Task 均早于并被对应实现 Task 依赖；RED/GREEN 证据绑定当前快照。
 - [ ] T017–T036 依赖无环、Scope 未越界、旧 T001–T016 未被执行或复用。
-- [ ] spec C-01–10、AC-01–13、RE-01–08 与 Human 批准后的 constitution 1.3 保持完整；8.5/8.6、原始错误边界和核心构造签名隔离通过审核。
+- [ ] spec C-01–10、AC-01–13、RE-01–08 与 Human 批准后的 constitution 1.4 保持完整；8.5/8.6、原始错误边界和核心构造签名隔离通过审核。
 - [ ] 每个 Plan 的聚焦验证完成；真实数据、外部 RPC 与链上提交仅在 T036 去重执行。
 - [ ] 未经批准不提交、不推送、不合并；集成阶段只做结构检查。
 
-既有批准和集成事实保留。RAW-ERROR-v1 已批准并重开 T017–T022；T017/T018 已完成门禁并获准集成，T019 未授权。T023/T024 保持完成；当前 T025 整包 RED/审核对新基线 stale，T025/T026 等待 T019–T022 完成后重建受影响证据。BITCOIN-CONTRACT-v1 与 T027 继续暂停，T028–T036 维持依赖并阻塞。仍为 5 Plan / 20 Task，无真实 RPC、广播、提交、推送或 PR 授权。
+当前状态：PLAN-v7-REMAINING-RAW-v1 已获 Human 批准；T017–T027 已完成对应 RED/GREEN、独立 Auditor、Human 门禁并集成。T028 已单独授权进入实现，T029–T036 仍逐项过门禁。仍为 5 Plan / 20 Task；不授权真实 RPC、广播、推送、PR 或将 T027 的 Auditor 替代授权沿用到后续任务。
