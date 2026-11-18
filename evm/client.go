@@ -3,6 +3,7 @@ package evm
 import (
 	"context"
 	"net/http"
+	"net/url"
 
 	"github.com/Stone-afk/chain-api-go/apierror"
 	"github.com/Stone-afk/chain-api-go/jsonrpc"
@@ -15,11 +16,12 @@ type Client struct {
 	rpc    *rpc.Client
 }
 
-func New(caller jsonrpc.Caller) (*Client, error) {
-	if caller == nil {
-		return nil, apierror.Error{Kind: apierror.Configuration}
+func New(rawURL string, caller jsonrpc.Caller) (*Client, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.Fragment != "" {
+		return nil, apierror.Error{Kind: apierror.Configuration, Cause: err}
 	}
-	client, err := rpc.DialOptions(context.Background(), "http://chain-api-go.invalid", rpc.WithHTTPClient(&http.Client{Transport: bridge{caller: caller}}))
+	client, err := rpc.DialOptions(context.Background(), rawURL, rpc.WithHTTPClient(&http.Client{Transport: callerRoundTripper{caller: caller}}))
 	if err != nil {
 		return nil, err
 	}

@@ -32,8 +32,9 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
-docs/
-docs/superpowers
+/docs/
+/internal/test/integration/*.local.yaml
+/internal/test/integration/*.local.yml
 
 .superpowers/
 .cursor/

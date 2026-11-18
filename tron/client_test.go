@@ -41,7 +41,7 @@ func (p *fakePoster) Post(ctx context.Context, path string, request, result any)
 }
 func newClient(t *testing.T, p *fakePoster) *Client {
 	t.Helper()
-	c, err := New(Config{}, p)
+	c, err := New(p)
 	if err != nil || c == nil {
 		t.Fatalf("constructor failed")
 	}
@@ -95,11 +95,6 @@ func checkError(t *testing.T, err error, kind apierror.Kind, unknown bool) apier
 	return e
 }
 func TestConstructor(t *testing.T) {
-	c, err := New(Config{}, nil)
-	if c != nil {
-		t.Error("nil Poster accepted")
-	}
-	checkError(t, err, apierror.Configuration, false)
 	p := &fakePoster{}
 	newClient(t, p)
 	if p.calls != 0 {

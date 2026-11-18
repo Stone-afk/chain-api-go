@@ -24,6 +24,11 @@ func (c *Client) compute(ctx context.Context, method string, req ContractCallReq
 		return nil, protocol(method, err, false)
 	}
 	accepted, valid := decision(inner["result"])
+	var code string
+	if _, present := inner["result"]; !present && json.Unmarshal(inner["code"], &code) == nil && code != "" {
+		// proto3 JSON omits result=false, so a bare node code is a rejection.
+		accepted, valid = false, true
+	}
 	if !valid {
 		return nil, protocol(method, nil, false)
 	}

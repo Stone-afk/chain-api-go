@@ -1,0 +1,376 @@
+{
+  "chain": "tron",
+  "manifest_version": 1,
+  "network": "mainnet",
+  "network_identity": {
+    "bitcoin_chain": "",
+    "chain_id": "",
+    "genesis_hash": "",
+    "tron_genesis_block_id": "00000000000000001ebf88508a03865c71d452e25f4d51194196a1d22b6653dc"
+  },
+  "samples": [
+    {
+      "addresses": [
+        "41ac7d37b9f999bf2cd446b2601a4d5b788ab49a7c"
+      ],
+      "block_hash": "00000000053f6c2230aa58d3c035da5c9fbcd5c514a2fd6aa109ee2879e24c69",
+      "category": "native",
+      "expected": {
+        "block_id": "00000000053f6c2230aa58d3c035da5c9fbcd5c514a2fd6aa109ee2879e24c69",
+        "transaction": {
+          "raw_data": {
+            "contract": [
+              {
+                "parameter": {
+                  "type_url": "type.googleapis.com/protocol.TransferContract",
+                  "value": {
+                    "amount": 1,
+                    "owner_address": "41ac7d37b9f999bf2cd446b2601a4d5b788ab49a7c",
+                    "to_address": "41002d38bf4c2b1cea0f034af8a9ff099f094ae713"
+                  }
+                },
+                "type": "TransferContract"
+              }
+            ],
+            "expiration": 1794801573000,
+            "ref_block_bytes": "6c0e",
+            "ref_block_hash": "105294fb2c119e4c",
+            "timestamp": 1794801516026
+          },
+          "raw_data_hex": "0a026c0e2208105294fb2c119e4c4088b98a949e345a65080112610a2d747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e5472616e73666572436f6e747261637412300a1541ac7d37b9f999bf2cd446b2601a4d5b788ab49a7c121541002d38bf4c2b1cea0f034af8a9ff099f094ae713180170fafb86949e34",
+          "ret": [
+            {
+              "contractRet": "SUCCESS"
+            }
+          ],
+          "signature": [
+            "93cde05ad3f766f25b39f566165c57e12bef9e311989b75508c2ad129cac552a5270b7084cfb9ff4ba2761f5f64bed495c25da40ec9f1c3233186415268c58e900"
+          ],
+          "txID": "11d2f8b4e66a074e6d053acef1d22d6128370fe5cb9283b93f516b1d62ccf85f"
+        },
+        "transaction_info": {
+          "blockNumber": 88042530,
+          "blockTimeStamp": 1794801519000,
+          "contractResult": [
+            ""
+          ],
+          "id": "11d2f8b4e66a074e6d053acef1d22d6128370fe5cb9283b93f516b1d62ccf85f",
+          "receipt": {
+            "net_usage": 265
+          }
+        }
+      },
+      "field_sources": {
+        "block_id": "independent_rpc:GetBlockByNum",
+        "transaction": "independent_rpc:GetTransactionByID",
+        "transaction_info": "independent_rpc:GetTransactionInfoByID"
+      },
+      "height_or_slot": 88042530,
+      "observed_at": "2026-11-18T06:03:51Z",
+      "requirements": [
+        "solidity endpoints exposed alongside full-node endpoints"
+      ],
+      "rpc_preflight": {
+        "endpoint_alias": "tron_read",
+        "methods": {
+          "GetBlockByNum": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetSolidifiedTransactionByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetSolidifiedTransactionInfoByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetTransactionByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetTransactionInfoByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          }
+        },
+        "network_identity": {
+          "bitcoin_chain": "",
+          "chain_id": "",
+          "genesis_hash": "",
+          "tron_genesis_block_id": "00000000000000001ebf88508a03865c71d452e25f4d51194196a1d22b6653dc"
+        },
+        "observed_at": "2026-11-18T06:03:51Z",
+        "status": "PASS"
+      },
+      "sample_id": "tron-native-1",
+      "source_url": "https://tronscan.org/#/transaction/11d2f8b4e66a074e6d053acef1d22d6128370fe5cb9283b93f516b1d62ccf85f",
+      "transaction_id": "11d2f8b4e66a074e6d053acef1d22d6128370fe5cb9283b93f516b1d62ccf85f"
+    },
+    {
+      "addresses": [
+        "412a2074757fda796cc2d698554228b3ee8742775d"
+      ],
+      "block_hash": "00000000053f6c2230aa58d3c035da5c9fbcd5c514a2fd6aa109ee2879e24c69",
+      "category": "token",
+      "expected": {
+        "block_id": "00000000053f6c2230aa58d3c035da5c9fbcd5c514a2fd6aa109ee2879e24c69",
+        "transaction": {
+          "raw_data": {
+            "contract": [
+              {
+                "parameter": {
+                  "type_url": "type.googleapis.com/protocol.TriggerSmartContract",
+                  "value": {
+                    "contract_address": "41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+                    "data": "a9059cbb0000000000000000000000008c8448d36a89a724994de6706e3a7167bb1260ce000000000000000000000000000000000000000000000000000000000b998350",
+                    "owner_address": "412a2074757fda796cc2d698554228b3ee8742775d"
+                  }
+                },
+                "type": "TriggerSmartContract"
+              }
+            ],
+            "expiration": 1794801573000,
+            "fee_limit": 100000000,
+            "ref_block_bytes": "6c20",
+            "ref_block_hash": "534ce2386d180f74",
+            "timestamp": 1794801515651
+          },
+          "raw_data_hex": "0a026c202208534ce2386d180f744088b98a949e345aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a15412a2074757fda796cc2d698554228b3ee8742775d121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb0000000000000000000000008c8448d36a89a724994de6706e3a7167bb1260ce000000000000000000000000000000000000000000000000000000000b9983507083f986949e34900180c2d72f",
+          "ret": [
+            {
+              "contractRet": "SUCCESS"
+            }
+          ],
+          "signature": [
+            "1ddf7da2c5b39121e5d779194443b8831f462c7c3a91eefb3deeca65c7fa2cb6e44b1236c0ef3bc3b1200c27e615f393b99a9ca21ac5b57c27e15e497ce05c5e00"
+          ],
+          "txID": "a73fed659d66d1805874d91c04655689ff0c9c8a0ccc0198f37346147303a11f"
+        },
+        "transaction_info": {
+          "blockNumber": 88042530,
+          "blockTimeStamp": 1794801519000,
+          "contractResult": [
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          "contract_address": "41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+          "fee": 345000,
+          "id": "a73fed659d66d1805874d91c04655689ff0c9c8a0ccc0198f37346147303a11f",
+          "log": [
+            {
+              "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+              "data": "000000000000000000000000000000000000000000000000000000000b998350",
+              "topics": [
+                "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                "0000000000000000000000002a2074757fda796cc2d698554228b3ee8742775d",
+                "0000000000000000000000008c8448d36a89a724994de6706e3a7167bb1260ce"
+              ]
+            }
+          ],
+          "receipt": {
+            "energy_penalty_total": 49635,
+            "energy_usage": 64284,
+            "energy_usage_total": 64285,
+            "net_fee": 345000,
+            "origin_energy_usage": 1,
+            "result": "SUCCESS"
+          }
+        }
+      },
+      "field_sources": {
+        "block_id": "independent_rpc:GetBlockByNum",
+        "transaction": "independent_rpc:GetTransactionByID",
+        "transaction_info": "independent_rpc:GetTransactionInfoByID"
+      },
+      "height_or_slot": 88042530,
+      "observed_at": "2026-11-18T06:03:51Z",
+      "requirements": [
+        "solidity endpoints exposed alongside full-node endpoints"
+      ],
+      "rpc_preflight": {
+        "endpoint_alias": "tron_read",
+        "methods": {
+          "GetBlockByNum": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetSolidifiedTransactionByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetSolidifiedTransactionInfoByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetTransactionByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetTransactionInfoByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          }
+        },
+        "network_identity": {
+          "bitcoin_chain": "",
+          "chain_id": "",
+          "genesis_hash": "",
+          "tron_genesis_block_id": "00000000000000001ebf88508a03865c71d452e25f4d51194196a1d22b6653dc"
+        },
+        "observed_at": "2026-11-18T06:03:51Z",
+        "status": "PASS"
+      },
+      "sample_id": "tron-token-2",
+      "source_url": "https://tronscan.org/#/transaction/a73fed659d66d1805874d91c04655689ff0c9c8a0ccc0198f37346147303a11f",
+      "transaction_id": "a73fed659d66d1805874d91c04655689ff0c9c8a0ccc0198f37346147303a11f"
+    },
+    {
+      "addresses": [
+        "417189fcf083664ea0e75220b44d3c30e7c2439ebd"
+      ],
+      "block_hash": "00000000053f6c2230aa58d3c035da5c9fbcd5c514a2fd6aa109ee2879e24c69",
+      "category": "failed",
+      "expected": {
+        "block_id": "00000000053f6c2230aa58d3c035da5c9fbcd5c514a2fd6aa109ee2879e24c69",
+        "transaction": {
+          "raw_data": {
+            "contract": [
+              {
+                "parameter": {
+                  "type_url": "type.googleapis.com/protocol.TriggerSmartContract",
+                  "value": {
+                    "contract_address": "41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+                    "data": "a9059cbb00000000000000000000000096846e55670005be26ead6625ceeb49f05f700c6000000000000000000000000000000000000000000000000000000012a05f200",
+                    "owner_address": "417189fcf083664ea0e75220b44d3c30e7c2439ebd"
+                  }
+                },
+                "type": "TriggerSmartContract"
+              }
+            ],
+            "expiration": 1794801567000,
+            "fee_limit": 100000000,
+            "ref_block_bytes": "6c1e",
+            "ref_block_hash": "4994452b5d51d665",
+            "timestamp": 1794801507000
+          },
+          "raw_data_hex": "0a026c1e22084994452b5d51d66540988a8a949e345aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a15417189fcf083664ea0e75220b44d3c30e7c2439ebd121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb00000000000000000000000096846e55670005be26ead6625ceeb49f05f700c6000000000000000000000000000000000000000000000000000000012a05f20070b8b586949e34900180c2d72f",
+          "ret": [
+            {
+              "contractRet": "OUT_OF_ENERGY"
+            }
+          ],
+          "signature": [
+            "e710f736c3afb632fec525895d66f9ad4950dd41ee1be5543684e3a66bdaa3661b86f16d778a2e526489a2926fb02bc5dca76f1d2f8de1e9c3013890fd973a7c1b"
+          ],
+          "txID": "02db112a079677fc73a1ee01ec20c1ca6fb550adb16053d3a6da2dc311a89ce0"
+        },
+        "transaction_info": {
+          "blockNumber": 88042530,
+          "blockTimeStamp": 1794801519000,
+          "contractResult": [
+            ""
+          ],
+          "contract_address": "41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+          "id": "02db112a079677fc73a1ee01ec20c1ca6fb550adb16053d3a6da2dc311a89ce0",
+          "receipt": {
+            "net_usage": 345,
+            "result": "OUT_OF_ENERGY"
+          },
+          "resMessage": "4e6f7420656e6f75676820656e6572677920666f722027505553483127206f7065726174696f6e20657865637574696e673a20637572496e766f6b65456e657267794c696d69745b305d2c206375724f70456e657267795b335d2c2070656e616c7479456e657267795b31305d2c2075736564456e657267795b305d",
+          "result": "FAILED"
+        }
+      },
+      "field_sources": {
+        "block_id": "independent_rpc:GetBlockByNum",
+        "transaction": "independent_rpc:GetTransactionByID",
+        "transaction_info": "independent_rpc:GetTransactionInfoByID"
+      },
+      "height_or_slot": 88042530,
+      "observed_at": "2026-11-18T06:03:51Z",
+      "requirements": [
+        "solidity endpoints exposed alongside full-node endpoints"
+      ],
+      "rpc_preflight": {
+        "endpoint_alias": "tron_read",
+        "methods": {
+          "GetBlockByNum": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetSolidifiedTransactionByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetSolidifiedTransactionInfoByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetTransactionByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "GetTransactionInfoByID": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          }
+        },
+        "network_identity": {
+          "bitcoin_chain": "",
+          "chain_id": "",
+          "genesis_hash": "",
+          "tron_genesis_block_id": "00000000000000001ebf88508a03865c71d452e25f4d51194196a1d22b6653dc"
+        },
+        "observed_at": "2026-11-18T06:03:51Z",
+        "status": "PASS"
+      },
+      "sample_id": "tron-failed-3",
+      "source_url": "https://tronscan.org/#/transaction/02db112a079677fc73a1ee01ec20c1ca6fb550adb16053d3a6da2dc311a89ce0",
+      "transaction_id": "02db112a079677fc73a1ee01ec20c1ca6fb550adb16053d3a6da2dc311a89ce0"
+    }
+  ]
+}

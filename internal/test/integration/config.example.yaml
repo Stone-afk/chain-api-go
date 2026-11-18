@@ -1,0 +1,49 @@
+# chain-api-go live scenario template.
+# Copy to config.local.yaml (git-ignored) and replace placeholders locally.
+# Hosts stay .invalid here; never commit real endpoints, header values or credentials.
+max_requests: 120
+min_interval: 250ms
+total_timeout: 10m
+required_chains:
+  - ethereum
+  - bnb
+  - bitcoin
+  - solana
+  - tron
+# Submit probe stays BLOCKED/authorization until uncommented locally with a real approval reference.
+# submit_probe_authorization: REPLACE_ME
+chains:
+  ethereum:
+    endpoint: https://ethereum.invalid/v3/REPLACE_ME
+    params:
+      expected_chain_id: 1
+      contract: 0xdAC17F958D2ee523a2206206994597C13D831ec7
+      call_data: 0x18160ddd
+  bnb:
+    endpoint: https://bnb.invalid/v3/REPLACE_ME
+    params:
+      expected_chain_id: 56
+      contract: 0x55d398326f99059fF775485246999027B3197955
+      call_data: 0x18160ddd
+  bitcoin:
+    endpoint: https://bitcoin.invalid
+    headers:
+      Authorization: Basic REPLACE_ME
+    params:
+      expected_chain: main
+      expected_genesis: 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
+      jsonrpc_version: 1.0
+  solana:
+    endpoint: https://solana.invalid/v3/REPLACE_ME
+    params:
+      expected_genesis: 5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d
+      account: 11111111111111111111111111111111
+  tron:
+    endpoint: https://tron.invalid
+    headers:
+      TRON-PRO-API-KEY: REPLACE_ME
+    params:
+      expected_genesis: 00000000000000001ebf88508a03865c71d452e25f4d51194196a1d22b6653dc
+      account: T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb
+      contract: TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
+      function_selector: totalSupply()

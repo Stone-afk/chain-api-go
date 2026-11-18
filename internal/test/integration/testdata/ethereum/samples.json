@@ -1,0 +1,329 @@
+{
+  "chain": "ethereum",
+  "manifest_version": 2,
+  "network": "mainnet",
+  "network_identity": {
+    "bitcoin_chain": "",
+    "chain_id": "1",
+    "genesis_hash": "",
+    "tron_genesis_block_id": ""
+  },
+  "samples": [
+    {
+      "addresses": [
+        "0xb42f812a44c22cc6b861478900401ee759ebead6",
+        "0xe66dc05335e141504af66f784983fe14309a925b"
+      ],
+      "block_hash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+      "category": "native",
+      "expected": {
+        "block_hash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+        "block_number": 23800000,
+        "parent_hash": "0x33b867e9e2e3614934559e583203b39845c6d167f99ac3afb60b8ff9507b1080",
+        "receipt": {
+          "blockHash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+          "blockNumber": "0x16b28c0",
+          "contractAddress": null,
+          "cumulativeGasUsed": "0x1df8b8",
+          "effectiveGasPrice": "0x56222581",
+          "from": "0xb42f812a44c22cc6b861478900401ee759ebead6",
+          "gasUsed": "0x5208",
+          "logs": [],
+          "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "status": "0x1",
+          "to": "0xe66dc05335e141504af66f784983fe14309a925b",
+          "transactionHash": "0xaea35135672ef5b905cf8ec457229db7894ea69ef4a2a4f7a16befc71ac451c5",
+          "transactionIndex": "0x5",
+          "type": "0x2"
+        },
+        "transaction": {
+          "accessList": [],
+          "blockHash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+          "blockNumber": "0x16b28c0",
+          "blockTimestamp": "0x691799ab",
+          "chainId": "0x1",
+          "from": "0xb42f812a44c22cc6b861478900401ee759ebead6",
+          "gas": "0x61a8",
+          "gasPrice": "0x56222581",
+          "hash": "0xaea35135672ef5b905cf8ec457229db7894ea69ef4a2a4f7a16befc71ac451c5",
+          "input": "0x",
+          "maxFeePerGas": "0x58cc9da3",
+          "maxPriorityFeePerGas": "0x3b9aca00",
+          "nonce": "0x3612c",
+          "r": "0x732a40649f3f723fe0bc1aa12e5c39d276fbde1cae0d3ac7104fbf3491f93877",
+          "s": "0x19282722c0ea421e76419a2da4d3b58d5a8c9164d22b077f6d0495e67320ed4e",
+          "to": "0xe66dc05335e141504af66f784983fe14309a925b",
+          "transactionIndex": "0x5",
+          "type": "0x2",
+          "v": "0x0",
+          "value": "0x227cd9e1fffe4",
+          "yParity": "0x0"
+        }
+      },
+      "field_sources": {
+        "block_hash": "independent_rpc:BlockByNumber",
+        "block_number": "browser:https://etherscan.io/tx/0xaea35135672ef5b905cf8ec457229db7894ea69ef4a2a4f7a16befc71ac451c5",
+        "parent_hash": "independent_rpc:BlockByNumber",
+        "receipt": "independent_rpc:TransactionReceipt",
+        "transaction": "independent_rpc:TransactionByHash"
+      },
+      "height_or_slot": 23800000,
+      "observed_at": "2026-11-18T06:03:51Z",
+      "requirements": [
+        "archive or full history for receipts and blocks at the sample height"
+      ],
+      "rpc_preflight": {
+        "endpoint_alias": "ethereum_read",
+        "methods": {
+          "BlockByNumber": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "TransactionByHash": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "TransactionReceipt": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          }
+        },
+        "network_identity": {
+          "bitcoin_chain": "",
+          "chain_id": "1",
+          "genesis_hash": "",
+          "tron_genesis_block_id": ""
+        },
+        "observed_at": "2026-11-18T06:03:51Z",
+        "status": "PASS"
+      },
+      "sample_id": "ethereum-native-1",
+      "source_url": "https://etherscan.io/tx/0xaea35135672ef5b905cf8ec457229db7894ea69ef4a2a4f7a16befc71ac451c5",
+      "transaction_id": "0xaea35135672ef5b905cf8ec457229db7894ea69ef4a2a4f7a16befc71ac451c5"
+    },
+    {
+      "addresses": [
+        "0x91d40e4818f4d4c57b4578d9eca6afc92ac8debe",
+        "0xbb0e17ef65f82ab018d8edd776e8dd940327b28b"
+      ],
+      "block_hash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+      "category": "token",
+      "expected": {
+        "block_hash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+        "block_number": 23800000,
+        "parent_hash": "0x33b867e9e2e3614934559e583203b39845c6d167f99ac3afb60b8ff9507b1080",
+        "receipt": {
+          "blockHash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+          "blockNumber": "0x16b28c0",
+          "contractAddress": null,
+          "cumulativeGasUsed": "0xbb365",
+          "effectiveGasPrice": "0x3854c081",
+          "from": "0x91d40e4818f4d4c57b4578d9eca6afc92ac8debe",
+          "gasUsed": "0xc9a1",
+          "logs": [
+            {
+              "address": "0xbb0e17ef65f82ab018d8edd776e8dd940327b28b",
+              "blockHash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+              "blockNumber": "0x16b28c0",
+              "blockTimestamp": "0x691799ab",
+              "data": "0x000000000000000000000000000000000000000000000032f60abce045850000",
+              "logIndex": "0x16",
+              "removed": false,
+              "topics": [
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                "0x00000000000000000000000091d40e4818f4d4c57b4578d9eca6afc92ac8debe",
+                "0x00000000000000000000000009b16ae6ce5812149e606d6cb9bca75eabb1a94e"
+              ],
+              "transactionHash": "0x97791aa395ca52b460b630e5ee609cd30e5a21c2de75caea69414f005bff6f0a",
+              "transactionIndex": "0x2"
+            }
+          ],
+          "logsBloom": "0x00000000000000000000000000000000000000000800000000000000800000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000020000001000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000010000000000000000000000000800000000000008000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "status": "0x1",
+          "to": "0xbb0e17ef65f82ab018d8edd776e8dd940327b28b",
+          "transactionHash": "0x97791aa395ca52b460b630e5ee609cd30e5a21c2de75caea69414f005bff6f0a",
+          "transactionIndex": "0x2",
+          "type": "0x2"
+        },
+        "transaction": {
+          "accessList": [],
+          "blockHash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+          "blockNumber": "0x16b28c0",
+          "blockTimestamp": "0x691799ab",
+          "chainId": "0x1",
+          "from": "0x91d40e4818f4d4c57b4578d9eca6afc92ac8debe",
+          "gas": "0x33450",
+          "gasPrice": "0x3854c081",
+          "hash": "0x97791aa395ca52b460b630e5ee609cd30e5a21c2de75caea69414f005bff6f0a",
+          "input": "0xa9059cbb00000000000000000000000009b16ae6ce5812149e606d6cb9bca75eabb1a94e000000000000000000000000000000000000000000000032f60abce045850000",
+          "maxFeePerGas": "0x74881fed00",
+          "maxPriorityFeePerGas": "0x1dcd6500",
+          "nonce": "0x75083",
+          "r": "0xcb688a3336df234096a3bc05a970311107bb35a3c9a16eb78942f5f5c699b97e",
+          "s": "0xbd0e63ceab7544a6ce04f63ef29663a069d013ef4bacad8f392d3dde329f51a",
+          "to": "0xbb0e17ef65f82ab018d8edd776e8dd940327b28b",
+          "transactionIndex": "0x2",
+          "type": "0x2",
+          "v": "0x1",
+          "value": "0x0",
+          "yParity": "0x1"
+        }
+      },
+      "field_sources": {
+        "block_hash": "independent_rpc:BlockByNumber",
+        "block_number": "browser:https://etherscan.io/tx/0x97791aa395ca52b460b630e5ee609cd30e5a21c2de75caea69414f005bff6f0a",
+        "parent_hash": "independent_rpc:BlockByNumber",
+        "receipt": "independent_rpc:TransactionReceipt",
+        "transaction": "independent_rpc:TransactionByHash"
+      },
+      "height_or_slot": 23800000,
+      "observed_at": "2026-11-18T06:03:51Z",
+      "requirements": [
+        "archive or full history for receipts and blocks at the sample height"
+      ],
+      "rpc_preflight": {
+        "endpoint_alias": "ethereum_read",
+        "methods": {
+          "BlockByNumber": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "TransactionByHash": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "TransactionReceipt": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          }
+        },
+        "network_identity": {
+          "bitcoin_chain": "",
+          "chain_id": "1",
+          "genesis_hash": "",
+          "tron_genesis_block_id": ""
+        },
+        "observed_at": "2026-11-18T06:03:51Z",
+        "status": "PASS"
+      },
+      "sample_id": "ethereum-token-2",
+      "source_url": "https://etherscan.io/tx/0x97791aa395ca52b460b630e5ee609cd30e5a21c2de75caea69414f005bff6f0a",
+      "transaction_id": "0x97791aa395ca52b460b630e5ee609cd30e5a21c2de75caea69414f005bff6f0a"
+    },
+    {
+      "addresses": [
+        "0x95daa40eb4d8561e5d9d94e553a20d387775c528",
+        "0x967da4048cd07ab37855c090aaf366e4ce1b9f48"
+      ],
+      "block_hash": "0x4cc3b425ef485b55c0a5e24520174af994c948057c4b761c76c7f8699c62923b",
+      "category": "failed",
+      "expected": {
+        "block_hash": "0x4cc3b425ef485b55c0a5e24520174af994c948057c4b761c76c7f8699c62923b",
+        "block_number": 23800001,
+        "parent_hash": "0x86164a4ed35c1d7e4fa83d59e158be9d7450775db3ec3ad46c25e5c5da5d2bfb",
+        "receipt": {
+          "blockHash": "0x4cc3b425ef485b55c0a5e24520174af994c948057c4b761c76c7f8699c62923b",
+          "blockNumber": "0x16b28c1",
+          "contractAddress": null,
+          "cumulativeGasUsed": "0x3f30b9",
+          "effectiveGasPrice": "0x77359400",
+          "from": "0x95daa40eb4d8561e5d9d94e553a20d387775c528",
+          "gasUsed": "0x13880",
+          "logs": [],
+          "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "status": "0x0",
+          "to": "0x967da4048cd07ab37855c090aaf366e4ce1b9f48",
+          "transactionHash": "0x43f9be055014d4282e2c1c16f46cde92972f9b54d985d3dda4d1acb1ae305932",
+          "transactionIndex": "0xe",
+          "type": "0x0"
+        },
+        "transaction": {
+          "blockHash": "0x4cc3b425ef485b55c0a5e24520174af994c948057c4b761c76c7f8699c62923b",
+          "blockNumber": "0x16b28c1",
+          "blockTimestamp": "0x691799b7",
+          "chainId": "0x1",
+          "from": "0x95daa40eb4d8561e5d9d94e553a20d387775c528",
+          "gas": "0x13880",
+          "gasPrice": "0x77359400",
+          "hash": "0x43f9be055014d4282e2c1c16f46cde92972f9b54d985d3dda4d1acb1ae305932",
+          "input": "0xa9059cbb0000000000000000000000005b71d5fd6bb118665582dd87922bf3b9de6c75f90000000000000000000000000000000000000000000000142f512956d4b89000",
+          "nonce": "0x6aeb",
+          "r": "0x85e98cf2c199eb63ba4052dfb59ed0c4338436b99ecea58291d25a7d8e819e8e",
+          "s": "0x1a845b9f767107e2a8a0cc9327bb721120b5535bc271d262b430702ba4829360",
+          "to": "0x967da4048cd07ab37855c090aaf366e4ce1b9f48",
+          "transactionIndex": "0xe",
+          "type": "0x0",
+          "v": "0x25",
+          "value": "0x0"
+        }
+      },
+      "field_sources": {
+        "block_hash": "independent_rpc:BlockByNumber",
+        "block_number": "browser:https://etherscan.io/tx/0x43f9be055014d4282e2c1c16f46cde92972f9b54d985d3dda4d1acb1ae305932",
+        "parent_hash": "independent_rpc:BlockByNumber",
+        "receipt": "independent_rpc:TransactionReceipt",
+        "transaction": "independent_rpc:TransactionByHash"
+      },
+      "height_or_slot": 23800001,
+      "observed_at": "2026-11-18T06:03:51Z",
+      "requirements": [
+        "archive or full history for receipts and blocks at the sample height"
+      ],
+      "rpc_preflight": {
+        "endpoint_alias": "ethereum_read",
+        "methods": {
+          "BlockByNumber": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "TransactionByHash": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          },
+          "TransactionReceipt": {
+            "expected": null,
+            "has_rpc_code": false,
+            "node_code": "",
+            "outcome": "success",
+            "rpc_code": 0
+          }
+        },
+        "network_identity": {
+          "bitcoin_chain": "",
+          "chain_id": "1",
+          "genesis_hash": "",
+          "tron_genesis_block_id": ""
+        },
+        "observed_at": "2026-11-18T06:03:51Z",
+        "status": "PASS"
+      },
+      "sample_id": "ethereum-failed-3",
+      "source_url": "https://etherscan.io/tx/0x43f9be055014d4282e2c1c16f46cde92972f9b54d985d3dda4d1acb1ae305932",
+      "transaction_id": "0x43f9be055014d4282e2c1c16f46cde92972f9b54d985d3dda4d1acb1ae305932"
+    }
+  ]
+}

@@ -31,10 +31,10 @@ func privateNative(t *testing.T, c *Client) *srpc.Client {
 		}
 		return reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem().Interface().(*srpc.Client)
 	}
-	t.Fatal("NS-07: Client lacks private native rpc.Client bridge")
+	t.Fatal("NS-07: Client lacks private native rpc.Client")
 	return nil
 }
-func TestNativeSolanaBridgeUnsupported(t *testing.T) {
+func TestNativeSolanaCallerRPCClientUnsupported(t *testing.T) {
 	f := &fakeCaller{}
 	n := privateNative(t, client(t, f))
 	callbacks, network := 0, 0
@@ -50,7 +50,7 @@ func TestNativeSolanaBridgeUnsupported(t *testing.T) {
 	same(t, callbacks, 0)
 	same(t, network, 0)
 }
-func TestNativeSolanaBridgeForwardsIdentity(t *testing.T) {
+func TestNativeSolanaCallerRPCClientForwardsIdentity(t *testing.T) {
 	f := &fakeCaller{reply: `{"n":7}`}
 	n := privateNative(t, client(t, f))
 	ctx := context.WithValue(t.Context(), struct{}{}, "identity")

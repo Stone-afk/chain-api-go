@@ -1,7 +1,7 @@
 // Package solana exposes a restricted, directly imported Solana RPC client.
 // It uses github.com/solana-foundation/solana-go/v2 v2.3.0 with Go 1.26.0.
-// New(Config{}, jsonrpc.Caller) privately creates the native client through
-// NewWithCustomRPCClient. Its private bridge forwards CallForInto once to the
+// New(jsonrpc.Caller) privately creates the native client through
+// NewWithCustomRPCClient. Its private Caller RPC client forwards CallForInto once to the
 // injected Caller; callback and batch return Unsupported without calling out.
 // Construction performs no network I/O, configuration reads or background work.
 // No complete upstream client or default network transport is exposed.

@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/Stone-afk/chain-api-go/apierror"
 	"reflect"
 	"testing"
+
+	"github.com/Stone-afk/chain-api-go/apierror"
 )
 
 const hash = "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789"
@@ -42,7 +43,7 @@ func (f *rpcFake) Call(ctx context.Context, method string, params, result any) e
 }
 func client(t *testing.T, f *rpcFake) *Client {
 	t.Helper()
-	c, e := New(Config{}, f)
+	c, e := New(f)
 	if e != nil {
 		t.Errorf("New: %v", e)
 	}
@@ -70,11 +71,8 @@ func wire(t *testing.T, f *rpcFake, m, p string, ctx context.Context) {
 	equal(t, f.ctx, ctx)
 }
 func TestConstructor(t *testing.T) {
-	c, e := New(Config{}, nil)
-	equal(t, c, (*Client)(nil))
-	kind(t, e, apierror.Configuration)
 	f := &rpcFake{}
-	c, e = New(Config{}, f)
+	c, e := New(f)
 	if c == nil || e != nil {
 		t.Errorf("valid injected caller rejected: %v", e)
 	}

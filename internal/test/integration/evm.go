@@ -609,7 +609,7 @@ func evmReadCases(c *evm.Client, m readManifest, d dynamicInputs) ([]harnessCase
 			v, err := c.FeeHistory(ctx, in.FeeCount, at, in.FeePercentiles)
 			var want geth.FeeHistory
 			dec := json.Unmarshal(d.Preflight.Methods["FeeHistory"].Expected, &want)
-			return evmExpectation(d.Preflight.Methods["FeeHistory"], err, err == nil && dec == nil && reflect.DeepEqual(*v, want))
+			return evmExpectation(d.Preflight.Methods["FeeHistory"], err, err == nil && dec == nil && valueEqual(*v, want))
 		}),
 	}
 	for i := 0; i < 3; i++ {
@@ -833,7 +833,7 @@ func runLiveRead(ctx context.Context, deps runnerDeps) suiteReport {
 			return out
 		}
 		n, _ := new(big.Int).SetString(m.NetworkIdentity.ChainID, 10)
-		client, err := ethereum.New(ethereum.Config{ExpectedChainID: *n}, rpc)
+		client, err := ethereum.New(ethereum.Config{RawURL: cfg.Endpoint, ExpectedChainID: *n}, rpc)
 		if err != nil {
 			return out
 		}
@@ -862,7 +862,7 @@ func runLiveRead(ctx context.Context, deps runnerDeps) suiteReport {
 			return out
 		}
 		n, _ := new(big.Int).SetString(m.NetworkIdentity.ChainID, 10)
-		client, err := bnb.New(bnb.Config{ExpectedChainID: *n}, rpc)
+		client, err := bnb.New(bnb.Config{RawURL: cfg.Endpoint, ExpectedChainID: *n}, rpc)
 		if err != nil {
 			return out
 		}
@@ -890,7 +890,7 @@ func runLiveRead(ctx context.Context, deps runnerDeps) suiteReport {
 		if err != nil {
 			return out
 		}
-		client, err := bitcoin.New(bitcoin.Config{}, rpc)
+		client, err := bitcoin.New(rpc)
 		if err != nil {
 			return out
 		}
@@ -918,7 +918,7 @@ func runLiveRead(ctx context.Context, deps runnerDeps) suiteReport {
 		if err != nil {
 			return out
 		}
-		client, err := solana.New(solana.Config{}, rpc)
+		client, err := solana.New(rpc)
 		if err != nil {
 			return out
 		}
@@ -946,7 +946,7 @@ func runLiveRead(ctx context.Context, deps runnerDeps) suiteReport {
 		if err != nil {
 			return out
 		}
-		client, err := tron.New(tron.Config{}, rpc)
+		client, err := tron.New(rpc)
 		if err != nil {
 			return out
 		}
@@ -996,7 +996,7 @@ func runLiveBroadcast(ctx context.Context, deps runnerDeps) suiteReport {
 			return out
 		}
 		n, _ := new(big.Int).SetString(m.NetworkIdentity.ChainID, 10)
-		client, err := ethereum.New(ethereum.Config{ExpectedChainID: *n}, rpc)
+		client, err := ethereum.New(ethereum.Config{RawURL: cfg.Endpoint, ExpectedChainID: *n}, rpc)
 		if err != nil {
 			return out
 		}
@@ -1036,7 +1036,7 @@ func runLiveBroadcast(ctx context.Context, deps runnerDeps) suiteReport {
 			return out
 		}
 		n, _ := new(big.Int).SetString(m.NetworkIdentity.ChainID, 10)
-		client, err := bnb.New(bnb.Config{ExpectedChainID: *n}, rpc)
+		client, err := bnb.New(bnb.Config{RawURL: cfg.Endpoint, ExpectedChainID: *n}, rpc)
 		if err != nil {
 			return out
 		}
@@ -1075,7 +1075,7 @@ func runLiveBroadcast(ctx context.Context, deps runnerDeps) suiteReport {
 		if err != nil {
 			return out
 		}
-		client, err := bitcoin.New(bitcoin.Config{}, rpc)
+		client, err := bitcoin.New(rpc)
 		if err != nil {
 			return out
 		}
@@ -1114,7 +1114,7 @@ func runLiveBroadcast(ctx context.Context, deps runnerDeps) suiteReport {
 		if err != nil {
 			return out
 		}
-		client, err := solana.New(solana.Config{}, rpc)
+		client, err := solana.New(rpc)
 		if err != nil {
 			return out
 		}
@@ -1153,7 +1153,7 @@ func runLiveBroadcast(ctx context.Context, deps runnerDeps) suiteReport {
 		if err != nil {
 			return out
 		}
-		client, err := tron.New(tron.Config{}, rpc)
+		client, err := tron.New(rpc)
 		if err != nil {
 			return out
 		}

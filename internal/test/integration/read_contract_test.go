@@ -322,31 +322,31 @@ func contractReadCases(t *testing.T, chain string, m readManifest, d dynamicInpu
 	t.Helper()
 	switch chain {
 	case "ethereum":
-		c, e := ethereum.New(ethereum.Config{ExpectedChainID: *big.NewInt(1)}, call)
+		c, e := ethereum.New(ethereum.Config{RawURL: "http://fixture.invalid", ExpectedChainID: *big.NewInt(1)}, call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return ethereumReadCases(c, m, d)
 	case "bnb":
-		c, e := bnb.New(bnb.Config{ExpectedChainID: *big.NewInt(1)}, call)
+		c, e := bnb.New(bnb.Config{RawURL: "http://fixture.invalid", ExpectedChainID: *big.NewInt(1)}, call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return bnbReadCases(c, m, d)
 	case "bitcoin":
-		c, e := bitcoin.New(bitcoin.Config{}, call)
+		c, e := bitcoin.New(call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return bitcoinReadCases(c, m, d)
 	case "solana":
-		c, e := solana.New(solana.Config{}, call)
+		c, e := solana.New(call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return solanaReadCases(c, m, d)
 	default:
-		c, e := tron.New(tron.Config{}, call)
+		c, e := tron.New(call)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -937,6 +937,8 @@ func TestReadContractDynamicNullAndExpected(t *testing.T) {
 		{"ethereum", "CodeAt", "eth_getCode", `"0xbb"`, `"0xaa"`, "FAIL"},
 		{"bnb", "FilterLogs", "eth_getLogs", `[]`, `[{"address":"unexpected"}]`, "FAIL"},
 		{"ethereum", "EstimateGas", "eth_estimateGas", `null`, `"0x0"`, "FAIL"},
+		{"bnb", "FeeHistory", "eth_feeHistory", `{"OldestBlock":8,"BaseFee":[0],"GasUsedRatio":[0.5],"Reward":[[0]]}`, `{"oldestBlock":"0x8","baseFeePerGas":["0x0"],"gasUsedRatio":[0.5],"reward":[["0x0"]]}`, "PASS"},
+		{"bnb", "FeeHistory", "eth_feeHistory", `{"OldestBlock":8,"BaseFee":[1],"GasUsedRatio":[0.5],"Reward":[[0]]}`, `{"oldestBlock":"0x8","baseFeePerGas":["0x0"],"gasUsedRatio":[0.5],"reward":[["0x0"]]}`, "FAIL"},
 		{"bitcoin", "GetTxOut", "gettxout", `false`, `null`, "PASS"},
 		{"bitcoin", "EstimateSmartFee", "estimatesmartfee", `false`, `{"errors":["insufficient data"]}`, "PASS"},
 		{"bitcoin", "TestMempoolAccept", "testmempoolaccept", `true`, `[{"allowed":false}]`, "FAIL"},

@@ -8,7 +8,10 @@ import (
 	"math/big"
 )
 
-type Config struct{ ExpectedChainID big.Int }
+type Config struct {
+	RawURL          string
+	ExpectedChainID big.Int
+}
 type Client struct {
 	*evm.Client
 	expectedChainID big.Int
@@ -18,7 +21,7 @@ func New(cfg Config, rpc jsonrpc.Caller) (*Client, error) {
 	if cfg.ExpectedChainID.Sign() <= 0 {
 		return nil, apierror.Error{Kind: apierror.Configuration}
 	}
-	base, err := evm.New(rpc)
+	base, err := evm.New(cfg.RawURL, rpc)
 	if err != nil {
 		return nil, err
 	}

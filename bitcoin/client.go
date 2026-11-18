@@ -12,10 +12,7 @@ import (
 
 type Client struct{ rpc jsonrpc.Caller }
 
-func New(_ Config, rpc jsonrpc.Caller) (*Client, error) {
-	if rpc == nil {
-		return nil, apierror.Error{Kind: apierror.Configuration}
-	}
+func New(rpc jsonrpc.Caller) (*Client, error) {
 	return &Client{rpc: rpc}, nil
 }
 

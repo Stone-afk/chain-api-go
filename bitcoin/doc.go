@@ -1,7 +1,8 @@
 // Package bitcoin exposes a concrete Bitcoin Core client using jsonrpc.Caller.
 //
-// New(Config{}, caller) performs only local nil-interface validation. Use the
-// Bitcoin protocol dialect when constructing a jsonrpc.Client. Client methods
+// New(caller) performs no validation or I/O; callers must inject a valid
+// jsonrpc.Caller. Use the Bitcoin protocol dialect (or V2 against Bitcoin Core
+// 28+) when constructing a jsonrpc.Client. Client methods
 // are GetBlockchainInfo, GetBlockCount, GetBlockHash, GetBlock, GetTxOut,
 // GetRawTransaction, GetMempoolEntry, EstimateSmartFee, TestMempoolAccept and
 // SendRawTransaction. All take context first; block and raw-transaction queries

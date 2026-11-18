@@ -5,8 +5,6 @@ import (
 	"strings"
 )
 
-type Config struct{}
-
 type TxID string
 type BlockHash string
 type RawTransaction string

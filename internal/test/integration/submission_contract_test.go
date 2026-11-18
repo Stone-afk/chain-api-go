@@ -65,31 +65,31 @@ func contractSubmissionCases(t *testing.T, chain string, m submissionMaterial, p
 	t.Helper()
 	switch chain {
 	case "ethereum":
-		c, e := ethereum.New(ethereum.Config{ExpectedChainID: *big.NewInt(1)}, call)
+		c, e := ethereum.New(ethereum.Config{RawURL: "http://fixture.invalid", ExpectedChainID: *big.NewInt(1)}, call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return ethereumSubmissionCases(c, m, p, claim)
 	case "bnb":
-		c, e := bnb.New(bnb.Config{ExpectedChainID: *big.NewInt(1)}, call)
+		c, e := bnb.New(bnb.Config{RawURL: "http://fixture.invalid", ExpectedChainID: *big.NewInt(1)}, call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return bnbSubmissionCases(c, m, p, claim)
 	case "bitcoin":
-		c, e := bitcoin.New(bitcoin.Config{}, call)
+		c, e := bitcoin.New(call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return bitcoinSubmissionCases(c, m, p, claim)
 	case "solana":
-		c, e := solana.New(solana.Config{}, call)
+		c, e := solana.New(call)
 		if e != nil {
 			t.Fatal(e)
 		}
 		return solanaSubmissionCases(c, m, p, claim)
 	default:
-		c, e := tron.New(tron.Config{}, call)
+		c, e := tron.New(call)
 		if e != nil {
 			t.Fatal(e)
 		}

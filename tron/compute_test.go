@@ -96,7 +96,7 @@ func TestComputeValidation(t *testing.T) {
 }
 func TestComputeResultBoundary(t *testing.T) {
 	for _, method := range computeCases() {
-		for _, response := range []string{`null`, `[]`, `{}`, `{"result":true}`, `{"result":null}`, `{"result":{}}`, `{"result":{"result":"false"}}`, `{"Error":null}`} {
+		for _, response := range []string{`null`, `[]`, `{}`, `{"result":true}`, `{"result":null}`, `{"result":{}}`, `{"result":{"result":"false"}}`, `{"Error":null}`, `{"result":{"code":""}}`, `{"result":{"code":null,"message":"x"}}`, `{"result":{"code":7}}`, `{"result":{"message":"x"}}`, `{"result":{"result":null,"code":"OTHER_ERROR"}}`} {
 			t.Run(method.name+response, func(t *testing.T) {
 				p := &fakePoster{response: response}
 				_, err := method.call(newClient(t, p), context.Background(), contractRequest())
@@ -106,7 +106,7 @@ func TestComputeResultBoundary(t *testing.T) {
 				}
 			})
 		}
-		for _, response := range []string{`{"result":{"result":false,"code":"CONTRACT_VALIDATE_ERROR","message":"  synthetic not found  "},"extra":9007199254740993}`, `{"Error":"  synthetic unsupported  ","extra":9007199254740993}`} {
+		for _, response := range []string{`{"result":{"result":false,"code":"CONTRACT_VALIDATE_ERROR","message":"  synthetic not found  "},"extra":9007199254740993}`, `{"result":{"code":"CONTRACT_VALIDATE_ERROR","message":"  synthetic not found  "},"extra":9007199254740993}`, `{"Error":"  synthetic unsupported  ","extra":9007199254740993}`} {
 			t.Run(method.name+response, func(t *testing.T) {
 				p := &fakePoster{response: response}
 				_, err := method.call(newClient(t, p), context.Background(), contractRequest())

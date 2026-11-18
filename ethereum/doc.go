@@ -1,7 +1,7 @@
 // Package ethereum provides a concrete Ethereum client using the restricted
 // evm.Client API, Go 1.26.0 and go-ethereum v1.17.10.
 //
-// New(Config, jsonrpc.Caller) requires a positive ExpectedChainID big.Int value,
+// New(Config, jsonrpc.Caller) requires an injected HTTP/HTTPS RawURL and a positive ExpectedChainID big.Int value,
 // copies it, and performs no network or Caller requests. ValidateNetwork(ctx)
 // explicitly calls ChainID once and reports NetworkMismatch when different.
 // Validation is not automatic and does not guarantee later provider identity.
@@ -14,7 +14,7 @@
 // A hash means node acceptance only. See package evm for native types, pointer,
 // null/NotFound, pending/default semantics and breaking removal of old DTO/APIs.
 //
-// The private in-memory bridge has no default network transport and exposes no
+// The private in-memory Caller transport has no default network transport and exposes no
 // complete upstream client. The host owns dependencies and actual transport
 // lifecycle. There are no retries, background tasks or node fallback. Errors
 // preserve raw Caller fields and Cause through errors.Is/As; they are not safe

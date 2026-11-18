@@ -71,7 +71,7 @@ func (f *rpcFake) Call(ctx context.Context, method string, params, out any) erro
 }
 func nativeClient(t *testing.T, f *rpcFake) nativeContract {
 	t.Helper()
-	c, err := New(f)
+	c, err := New("http://fixture.invalid", f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,19 +122,20 @@ const a1 = "0x0000000000000000000000000000000000000001"
 
 func TestNativeEVMConstructor(t *testing.T) {
 	f := &rpcFake{}
-	c, err := New(f)
+	c, err := New("http://fixture.invalid", f)
 	if err != nil || c == nil {
 		t.Fatalf("constructor: %v", err)
 	}
 	equal(t, len(f.calls), 0)
-	c, err = New(nil)
-	assertKind(t, err, apierror.Configuration)
-	equal(t, c, (*Client)(nil))
+	c, err = New("://invalid", f)
+	if err == nil || c != nil {
+		t.Fatal("invalid injected RawURL accepted")
+	}
 }
 func TestNativeEVMMethodContract(t *testing.T) { nativeClient(t, &rpcFake{}) }
 
 func TestNativeEVMRestrictedSurface(t *testing.T) {
-	c, err := New(&rpcFake{})
+	c, err := New("http://fixture.invalid", &rpcFake{})
 	if err != nil {
 		t.Fatal(err)
 	}

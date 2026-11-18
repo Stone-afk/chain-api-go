@@ -12,10 +12,7 @@ import (
 
 type Client struct{ poster httpjson.Poster }
 
-func New(cfg Config, poster httpjson.Poster) (*Client, error) {
-	if poster == nil {
-		return nil, apierror.Error{Kind: apierror.Configuration}
-	}
+func New(poster httpjson.Poster) (*Client, error) {
 	return &Client{poster: poster}, nil
 }
 

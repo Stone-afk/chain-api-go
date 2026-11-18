@@ -42,9 +42,9 @@ go.mod：`e24bad16723d84ef5e3fd1ba63c2468e13a7bf7512c868e404c579a81ca38dfc`；go
 ## API、调用路径与默认关闭核查
 
 - EVM 13 个原生查询/计算 + 1 个字符串提交；Ethereum/BNB 嵌入项目受限 Client 并显式 ValidateNetwork。Solana 精确 11 个方法，README 名称自动比对 11/11，所有参数/返回签名按源码逐项核对。旧 types.go、DTO 别名和转发层不存在。
-- EVM 私有 ethclient/rpc 与固定 synthetic URL 的内存 bridge，Solana 私有 NewWithCustomRPCClient/CallForInto bridge；均无完整上游 Client 暴露、默认网络 transport、后台或重试。geth 构造内部 crypto/rand 熵读取仍披露。
+- EVM 私有 ethclient/rpc 使用调用方显式注入的 RawURL 和内存 `callerRoundTripper`，Solana 私有 NewWithCustomRPCClient/`callerRPCClient`；均无完整上游 Client 暴露、默认网络 transport、后台或重试。geth 构造内部 crypto/rand 熵读取仍披露。
 - 项目公开 API 和实际调用路径未见私钥输入、交易对象构造/MarshalBinary/签名/节点 unlock。EVM 仅 eth_sendRawTransaction 字符串；Solana 仅 SendEncodedTransactionWithOpts 字符串及 SimulateRawTransactionWithOpts 已序列化字节的 base64 传输包装。上游依赖图包含 crypto、bip39、unsafe 等包；这不等于项目调用它们的签名能力，审查遵循 constitution 5.4。
-- 项目生产文件不导入 unsafe。solana/bridge_test.go 使用已批准的 reflect/unsafe 读取私有原生 client 以测试 callback/batch；这是固定版本耦合，只在测试。公共 jsonrpc/httpjson 的 reflect 用于输出指针校验和原子解码，不用于 typed-nil 依赖探测。
+- 项目生产文件不导入 unsafe。solana/caller_rpc_client_test.go 使用已批准的 reflect/unsafe 读取私有原生 client 以测试 callback/batch；这是固定版本耦合，只在测试。公共 jsonrpc/httpjson 的 reflect 用于输出指针校验和原子解码，不用于 typed-nil 依赖探测。
 - 原始错误字段、正文与完整 Cause 保留；Caller 错误不重新编码为有损错误信封。非法提交零请求、明确 RPC 拒绝已知、其他提交不确定错误 unknown，非零标识不表示执行/确认。
 - TestReadContractDisabled/TestSubmissionContractDisabled 通过完整 integration 测试执行；其 forbidden-dependency 回调断言关闭后零配置/材料/时钟/客户端/账本/输出调用。真实入口仅读取开关后 NOT_RUN/Skip；没有仅以 Skip 替代零读取证明。
 
@@ -98,7 +98,7 @@ Ethereum/BNB read manifest 的 `manifest_version=2`，submission material 的 `v
 
 EVM 动态输入保留 address/at_block_number/call/estimate/log_filter/fee_count/fee_percentiles 键，但内容采用 common.Address、geth.CallMsg、geth.FilterQuery；不再使用旧 CallRequest/Has/BlockRef 字典。CallMsg、FilterQuery 使用原生 JSON 字段形式（如 FromBlock/ToBlock/Addresses/Topics），字节结果的 JSON expected 是 base64；block_number 为 uint64 数字，FeeHistory 使用原生字段名。历史 transaction/receipt 采用 core/types 原生 JSON，缺失遵循原生 null/NotFound/pending 契约。冻结字典权威为 plan §10 与当前 runner，不应从下方历史示例生成 EVM 材料。
 
-`BlockByNumber` 读取完整交易和叔块。每次底层 Caller 调用单独扣一次预算，不把一个 SDK 方法固定计作一个请求。确定性两叔块用例证明：预算 3 发生三次有序调用；预算 2 仅两次、第三次未发送、结果 BLOCKED。桥接首错停止，无并发 fanout 或重试。私有 integration context gate 将每次 Caller 调用交给既有 harness；普通 SDK context 不增加配置来源或后台行为。
+`BlockByNumber` 读取完整交易和叔块。每次底层 Caller 调用单独扣一次预算，不把一个 SDK 方法固定计作一个请求。确定性两叔块用例证明：预算 3 发生三次有序调用；预算 2 仅两次、第三次未发送、结果 BLOCKED。`callerRoundTripper` 首错停止，无并发 fanout 或重试。私有 integration context gate 将每次 Caller 调用交给既有 harness；普通 SDK context 不增加配置来源或后台行为。
 
 ## T039 验证边界
 
@@ -182,3 +182,7 @@ Environment: go1.25.14 darwin/amd64; go.mod specifies Go 1.25.0 and no third-par
 - Before/after byte comparison: exactly the 13 authorized documentation paths changed; no implementation, test or dependency changes. No trailing whitespace found. Git commands were prohibited; Controller will perform the read-only diff check instead of Coder running git diff --check.
 
 Unchanged implementation/test/go.mod snapshot excluding doc.go: 66 files, SHA-256 aggregate `53fd5aa2db0b490d58d844f4dd115c2f10eef1433f5f8e24c1cd9023573cff82`. Aggregate input is sorted relative path + NUL + file SHA-256 + newline. This preserves the inputs of prior behavioral evidence; complete documentation hashes are in task-35-report.md. No new behavioral RED/GREEN or real-chain PASS is claimed.
+
+## PLAN-v9 场景离线证据（2026-11-18）
+
+四个 live 开关为 0 时，`go test ./internal/test/integration -run '^TestScenario' -count=1` 退出码 0，`go vet ./internal/test/integration` 退出码 0。覆盖场景基座、EVM、Bitcoin、Solana、Tron 和拒绝探针的本地 fake。没有公网请求。真实只读运行和探针不在本节声称通过。T036 仍 BLOCKED。

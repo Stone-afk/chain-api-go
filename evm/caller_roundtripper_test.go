@@ -21,7 +21,7 @@ type nativeDependencyLeaf struct {
 func (e nativeDependencyLeaf) Error() string { return e.tag }
 func (e nativeDependencyLeaf) Unwrap() error { return e.cause }
 
-func TestNativeEVMWrappedErrorAndRequestIsolation(t *testing.T) {
+func TestNativeEVMCallerRoundTripperWrappedErrorAndRequestIsolation(t *testing.T) {
 	const addressMarker = "0x1234567890123456789012345678901234567890"
 	const payloadMarker = "0xdecafbad0123456789abcdef"
 	ctx := context.Background() // Caller returns cancellation; the request context remains valid.
@@ -119,7 +119,7 @@ func TestNativeEVMCallerErrorReachability(t *testing.T) {
 		t.Run(kind.ToString(), func(t *testing.T) {
 			source := apierror.Error{Kind: kind, Method: "eth_blockNumber", HasRPCCode: true, RPCCode: 0, HTTPStatus: 503, Message: "  SYNTHETIC_NODE\n", Data: json.RawMessage(` { "n":9007199254740993 } `), ResponseBody: []byte("SYNTHETIC_BODY\n"), ResponseBodyTruncated: true, Cause: leaf}
 			f := &rpcFake{err: source}
-			c, err := New(f)
+			c, err := New("http://fixture.invalid", f)
 			if err != nil {
 				t.Fatal(err)
 			}

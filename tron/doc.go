@@ -1,6 +1,6 @@
 // Package tron exposes native FullNode and five explicit solidified HTTP APIs.
 //
-// New(Config{}, httpjson.Poster) validates the nil interface locally without I/O.
+// New(httpjson.Poster) performs no validation or I/O; callers inject a valid Poster.
 // Client queries are GetNodeInfo, GetNowBlock, GetBlockByNum, GetAccount,
 // GetAccountResource, GetChainParameters, GetTransactionByID,
 // GetTransactionInfoByID, GetSolidifiedAccount, GetSolidifiedNowBlock,

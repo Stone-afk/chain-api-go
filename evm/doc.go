@@ -2,7 +2,7 @@
 // It requires Go 1.26.0 and github.com/ethereum/go-ethereum v1.17.10.
 //
 // New requires an injected jsonrpc.Caller and rejects a nil interface. It makes
-// no network or Caller requests. A private in-memory HTTP bridge connects the
+// no network or Caller requests. A private in-memory Caller RoundTripper connects the
 // private upstream clients to Caller, with no default network transport. The
 // fixed upstream constructor reads crypto/rand entropy; zero network I/O does
 // not mean zero OS I/O. No complete upstream client or lifecycle accessor is
@@ -20,7 +20,7 @@
 // apply: nil block numbers mean latest; null blocks, transactions and receipts
 // return ethereum.NotFound. TransactionByHash's bool means isPending, not present.
 // BlockByNumber returns full transactions and may perform one block request plus
-// ordered uncle requests; the bridge stops on the first Caller error. Integration
+// ordered uncle requests; the RoundTripper stops on the first Caller error. Integration
 // material version 2 budgets each underlying Caller request, including uncles.
 //
 // SendRawTransaction accepts only an already encoded string with a lower-case 0x

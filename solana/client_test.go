@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/Stone-afk/chain-api-go/apierror"
-	ns "github.com/solana-foundation/solana-go/v2"
-	srpc "github.com/solana-foundation/solana-go/v2/rpc"
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/Stone-afk/chain-api-go/apierror"
+	ns "github.com/solana-foundation/solana-go/v2"
+	srpc "github.com/solana-foundation/solana-go/v2/rpc"
 )
 
 // Synthetic identifiers and pre-serialized bytes, never constructed or signed transactions.
@@ -63,7 +64,7 @@ func (f *fakeCaller) Call(ctx context.Context, method string, params, out any) e
 }
 func client(t *testing.T, f *fakeCaller) *Client {
 	t.Helper()
-	c, e := New(Config{}, f)
+	c, e := New(f)
 	if e != nil || c == nil {
 		t.Fatalf("constructor: %v", e)
 	}
@@ -121,22 +122,19 @@ func (r rejectTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, errors.New("SYNTHETIC forbidden default network")
 }
 func TestNativeSolanaConstructor(t *testing.T) {
-	c, e := New(Config{}, nil)
-	same(t, c, (*Client)(nil))
-	classified(t, e, apierror.Configuration, false)
 	calls := 0
 	old := http.DefaultTransport
 	http.DefaultTransport = rejectTransport{&calls}
 	t.Cleanup(func() { http.DefaultTransport = old })
 	f := &fakeCaller{reply: "1"}
-	c = client(t, f)
+	c := client(t, f)
 	same(t, f.calls, 0)
 	same(t, calls, 0)
 	n, ok := any(c).(nativeContract)
 	if !ok {
 		t.Fatal("NS-02: native injected client unavailable")
 	}
-	_, e = n.GetSlotWithOpts(t.Context(), nil)
+	_, e := n.GetSlotWithOpts(t.Context(), nil)
 	if e != nil {
 		t.Fatal(e)
 	}

@@ -15,38 +15,38 @@ type callerError struct{ cause error }
 func (e callerError) Error() string { return e.cause.Error() }
 func (e callerError) Unwrap() error { return e.cause }
 
-type bridge struct{ caller jsonrpc.Caller }
-type bridgeRequest struct {
+type callerRoundTripper struct{ caller jsonrpc.Caller }
+type rpcRequest struct {
 	ID     json.RawMessage `json:"id"`
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params"`
 }
-type bridgeResponse struct {
+type rpcResponse struct {
 	Version string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id"`
 	Result  json.RawMessage `json:"result"`
 }
 
-// RoundTrip is an in-memory protocol bridge; it never uses a network transport.
-func (b bridge) RoundTrip(req *http.Request) (*http.Response, error) {
+// RoundTrip forwards native SDK JSON-RPC requests to the injected Caller in memory.
+func (b callerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	defer req.Body.Close()
 	raw, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}
-	var requests []bridgeRequest
+	var requests []rpcRequest
 	batch := bytes.HasPrefix(bytes.TrimSpace(raw), []byte("["))
 	if batch {
 		err = json.Unmarshal(raw, &requests)
 	} else {
-		var request bridgeRequest
+		var request rpcRequest
 		err = json.Unmarshal(raw, &request)
-		requests = []bridgeRequest{request}
+		requests = []rpcRequest{request}
 	}
 	if err != nil {
 		return nil, err
 	}
-	responses := make([]bridgeResponse, 0, len(requests))
+	responses := make([]rpcResponse, 0, len(requests))
 	for _, request := range requests {
 		var result json.RawMessage
 		call := func(ctx context.Context) error { return b.caller.Call(ctx, request.Method, request.Params, &result) }
@@ -61,7 +61,7 @@ func (b bridge) RoundTrip(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			return nil, callerError{err}
 		}
-		responses = append(responses, bridgeResponse{"2.0", request.ID, result})
+		responses = append(responses, rpcResponse{"2.0", request.ID, result})
 	}
 	var body []byte
 	if batch {

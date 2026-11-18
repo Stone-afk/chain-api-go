@@ -6,9 +6,7 @@
 
 1. [`constitution.md`](constitution.md)：项目级最高治理规则。
 2. [`docs/architecture.md`](docs/architecture.md)：总体架构与 SDK 边界。
-3. [`docs/superpowers/001-chain-api-go/spec.md`](docs/superpowers/001-chain-api-go/spec.md)：当前批准候选需求。
-4. [`docs/superpowers/001-chain-api-go/plan.md`](docs/superpowers/001-chain-api-go/plan.md)：当前批准候选技术方案。
-5. [`docs/superpowers/001-chain-api-go/tasks.md`](docs/superpowers/001-chain-api-go/tasks.md)：当前批准候选任务图。
+3. 当前需求的 `spec.md`、`plan.md`、`tasks.md`：位于 `docs/superpowers/` 下对应需求目录（`docs/` 不纳入 Git）。基线版本、任务状态、授权范围与例外只记录在这些文档中。
 
 发生冲突时，先停止实施并指出冲突。不得自行弱化 constitution、扩大范围或创造例外。平台安全规则和用户当前明确指令始终优先。
 
@@ -27,7 +25,7 @@
 
 ## 3. 开发流程
 
-- 当前规格基线为 `PLAN-v8-NATIVE-SDK-v1`。Human 已通过 `NATIVE-SDK-GOVERNANCE-v1` 授权按冻结的两个功能 Plan、T037–T042 连续规划、实施与独立审计；不得跳过依赖、Scope、TDD 和证据门禁。T017–T035 作为历史记录保留，T036 仍为 BLOCKED。该授权不包含真实 RPC、广播、Git 操作或发布。
+- 以当前获批规格基线为准；真实 RPC、广播、提交或发布只在规格中有 Human 书面授权时执行。
 - 每个 Task 内执行 Red → Green → Refactor；环境错误不能充当 RED。
 - 单元测试优先采用表格驱动测试，协议边界使用 fake 或 `httptest` 验证确定性行为。
 - 只修改获批 Task 的 Scope；新增依赖、API、路径、后台行为或弱化验收必须重新规划并审批。
@@ -39,7 +37,7 @@
 - 小字段、小结构体及其参数、返回值、构造器传参使用值语义，不使用指针。
 - 只有包含大量方法的实现对象，或持有大量依赖并负责复杂生命周期的对象（如 app、server、client）才允许使用指针。
 - 不得借上述规则批量改写既有指针。触及既有指针时必须保护数据库 `NULL` 语义和第三方 API 契约；发生冲突时先说明并交由用户决定，不得自行创建例外。
-- 固定原生依赖、受限封装、最小协议桥接和原生指针/转换例外只按 `constitution.md` 2.6、3.4、5.4、8.7 执行；不得把这些批准归纳为其他第三方类型或版本的通用例外。
+- 固定原生依赖、受限封装、最小 Caller transport 和原生指针/转换例外只按 `constitution.md` 2.6、3.4、5.4、8.7 执行；不得归纳为其他第三方类型或版本的通用例外。
 
 完整规范及冲突处理见 `constitution.md` 第 8 条。
 
@@ -55,7 +53,7 @@ go test ./bitcoin ./solana ./tron
 go vet ./...
 ```
 
-普通测试不得访问公网。真实 RPC 和广播只允许通过规划中定义的显式 live 开关、外部配置与授权门禁执行。
+普通测试必须保持 `CHAIN_API_GO_LIVE_TEST=0`、`CHAIN_API_GO_LIVE_BROADCAST=0`、`CHAIN_API_GO_LIVE_SCENARIO=0`、`CHAIN_API_GO_LIVE_SCENARIO_SUBMIT_PROBE=0`。真实只读场景只在 `CHAIN_API_GO_LIVE_SCENARIO=1` 且存在被忽略的 `internal/test/integration/config.local.yaml` 时运行。拒绝探针还要第二个开关和本地授权标记。
 
 ## 6. Git 与交付
 

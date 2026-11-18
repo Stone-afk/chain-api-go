@@ -50,16 +50,18 @@ func kind(t *testing.T, e error, want apierror.Kind) {
 func TestNewLocalValidation(t *testing.T) {
 	var typedNil *fakeCaller
 	for _, tc := range []struct {
-		name  string
-		id    big.Int
-		rpc   jsonrpc.Caller
-		valid bool
+		name   string
+		rawURL string
+		id     big.Int
+		rpc    jsonrpc.Caller
+		valid  bool
 	}{
-		{"valid", chainID(56), &fakeCaller{}, true}, {"nil", chainID(56), nil, false},
-		{"typed-nil", chainID(56), typedNil, true}, {"zero", chainID(0), &fakeCaller{}, false}, {"negative", chainID(-1), &fakeCaller{}, false},
+		{"valid", "http://fixture.invalid", chainID(56), &fakeCaller{}, true},
+		{"typed-nil", "http://fixture.invalid", chainID(56), typedNil, true}, {"missing-url", "", chainID(56), &fakeCaller{}, false},
+		{"zero", "http://fixture.invalid", chainID(0), &fakeCaller{}, false}, {"negative", "http://fixture.invalid", chainID(-1), &fakeCaller{}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			c, e := New(Config{ExpectedChainID: tc.id}, tc.rpc)
+			c, e := New(Config{RawURL: tc.rawURL, ExpectedChainID: tc.id}, tc.rpc)
 			if tc.valid {
 				if e != nil || c == nil {
 					t.Fatalf("valid constructor unavailable: %v", e)
@@ -91,7 +93,7 @@ func TestValidateNetwork(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := &fakeCaller{reply: tc.reply, err: tc.rpcErr}
 			expected := chainID(tc.id)
-			c, e := New(Config{ExpectedChainID: expected}, f)
+			c, e := New(Config{RawURL: "http://fixture.invalid", ExpectedChainID: expected}, f)
 			if e != nil {
 				t.Fatalf("constructor unavailable: %v", e)
 			}
@@ -130,7 +132,7 @@ type nativeFacade interface {
 
 func TestNativeEVMFacade(t *testing.T) {
 	f := &fakeCaller{reply: `"0x10000000000000001"`}
-	c, err := New(Config{ExpectedChainID: chainID(56)}, f)
+	c, err := New(Config{RawURL: "http://fixture.invalid", ExpectedChainID: chainID(56)}, f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +155,7 @@ func TestNativeEVMFacadeRawError(t *testing.T) {
 	leaf := errors.New("SYNTHETIC_CAUSE")
 	source := apierror.Error{Kind: apierror.RPC, HasRPCCode: true, RPCCode: 0, Message: "  SYNTHETIC_NODE\n", Data: json.RawMessage(` { "n":9007199254740993 } `), ResponseBody: []byte("SYNTHETIC_BODY"), ResponseBodyTruncated: true, Cause: leaf}
 	f := &fakeCaller{err: source}
-	c, err := New(Config{ExpectedChainID: chainID(56)}, f)
+	c, err := New(Config{RawURL: "http://fixture.invalid", ExpectedChainID: chainID(56)}, f)
 	if err != nil {
 		t.Fatal(err)
 	}
