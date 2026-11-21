@@ -525,7 +525,7 @@ var scenarioCatalogChains = []struct {
 	{"ethereum", scenarioEVMMethods, "jsonrpc.RawCall"},
 	{"bnb", scenarioEVMMethods, ""},
 	{"bitcoin", []string{"EstimateSmartFee", "GetBlock", "GetBlockCount", "GetBlockHash", "GetBlockchainInfo", "GetMempoolEntry", "GetRawTransaction", "GetTxOut", "SendRawTransaction", "TestMempoolAccept"}, ""},
-	{"solana", []string{"GetAccountInfoWithOpts", "GetBalanceWithOpts", "GetBlockWithOpts", "GetFeeForMessageWithOpts", "GetGenesisHash", "GetLatestBlockhashWithOpts", "GetSignatureStatuses", "GetSlotWithOpts", "GetTransaction", "SendEncodedTransactionWithOpts", "SimulateRawTransactionWithOpts"}, ""},
+	{"solana", []string{"GetAccountInfoWithOpts", "GetBalanceWithOpts", "GetBlockWithOpts", "GetBlocks", "GetFeeForMessageWithOpts", "GetFirstAvailableBlock", "GetGenesisHash", "GetLatestBlockhashWithOpts", "GetSignatureStatuses", "GetSlotWithOpts", "GetTransaction", "SendEncodedTransactionWithOpts", "SimulateRawTransactionWithOpts"}, ""},
 	{"tron", []string{"BroadcastTransaction", "EstimateEnergy", "GetAccount", "GetAccountResource", "GetBlockByNum", "GetChainParameters", "GetNodeInfo", "GetNowBlock", "GetSolidifiedAccount", "GetSolidifiedBlockByNum", "GetSolidifiedNowBlock", "GetSolidifiedTransactionByID", "GetSolidifiedTransactionInfoByID", "GetTransactionByID", "GetTransactionInfoByID", "TriggerConstantContract"}, "httpjson.RawPost"},
 }
 

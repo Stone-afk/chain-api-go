@@ -17,7 +17,7 @@ func TestNativeSolanaRestrictedSurface(t *testing.T) {
 	for i := 0; i < typ.NumMethod(); i++ {
 		names = append(names, typ.Method(i).Name)
 	}
-	want := []string{"GetGenesisHash", "GetSlotWithOpts", "GetBlockWithOpts", "GetBalanceWithOpts", "GetAccountInfoWithOpts", "GetLatestBlockhashWithOpts", "GetSignatureStatuses", "GetTransaction", "GetFeeForMessageWithOpts", "SimulateRawTransactionWithOpts", "SendEncodedTransactionWithOpts"}
+	want := []string{"GetGenesisHash", "GetSlotWithOpts", "GetBlockWithOpts", "GetBlocks", "GetFirstAvailableBlock", "GetBalanceWithOpts", "GetAccountInfoWithOpts", "GetLatestBlockhashWithOpts", "GetSignatureStatuses", "GetTransaction", "GetFeeForMessageWithOpts", "SimulateRawTransactionWithOpts", "SendEncodedTransactionWithOpts"}
 	sort.Strings(want)
 	same(t, names, want)
 	st := typ.Elem()

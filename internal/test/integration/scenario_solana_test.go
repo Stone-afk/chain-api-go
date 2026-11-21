@@ -45,6 +45,7 @@ type scenarioSOLNode struct {
 	sigCount                byte
 	tamperSlot, nullFee     bool
 	balanceErr              bool
+	blocksResult            []uint64
 	badVersion, missingAuth int
 	log                     []string
 	params                  map[string][]json.RawMessage
@@ -119,6 +120,13 @@ func (n *scenarioSOLNode) dispatch(method string) (any, int) {
 		return map[string]any{"context": ctx, "value": 5000}, 0
 	case "simulateTransaction":
 		return map[string]any{"context": ctx, "value": map[string]any{"err": nil, "logs": []string{}, "accounts": nil, "unitsConsumed": 150}}, 0
+	case "getFirstAvailableBlock":
+		return uint64(0), 0
+	case "getBlocks":
+		if n.blocksResult != nil {
+			return n.blocksResult, 0
+		}
+		return []uint64{scenarioSOLSlot}, 0
 	}
 	return nil, -32601
 }
@@ -171,7 +179,7 @@ func TestScenarioSolana(t *testing.T) {
 		node  *scenarioSOLNode
 		check func(t *testing.T, got map[string]scenarioIssue, n *scenarioSOLNode, requests int)
 	}{
-		// LS-09: consistent replay of all ten reads, block signatures only, base64 transaction bytes.
+		// LS-09: consistent replay of all twelve reads, block signatures only, base64 transaction bytes.
 		{name: "replay_all_pass", node: &scenarioSOLNode{genesis: scenarioSOLGenesis, sigCount: 1}, check: func(t *testing.T, got map[string]scenarioIssue, n *scenarioSOLNode, requests int) {
 			allPass(t, got)
 			if n.opts("getBlock")["transactionDetails"] != "signatures" || n.opts("getTransaction")["encoding"] != "base64" {
@@ -184,8 +192,29 @@ func TestScenarioSolana(t *testing.T) {
 			if msg != base64.StdEncoding.EncodeToString(scenarioSOLMessage()) {
 				t.Errorf("getFeeForMessage message=%q; want byte-offset slice of fetched transaction", msg)
 			}
+			p := n.params["getBlocks"]
+			if n.count("getBlocks") != 1 || len(p) != 3 {
+				t.Errorf("getBlocks calls=%d params=%v; want one call with [slot,slot,commitment]", n.count("getBlocks"), p)
+			} else {
+				var start, end uint64
+				var opts map[string]any
+				_ = json.Unmarshal(p[0], &start)
+				_ = json.Unmarshal(p[1], &end)
+				_ = json.Unmarshal(p[2], &opts)
+				if start != scenarioSOLSlot || end != scenarioSOLSlot || opts["commitment"] != "finalized" {
+					t.Errorf("getBlocks params=%v; want [%d,%d,{commitment:finalized}]", p, scenarioSOLSlot, scenarioSOLSlot)
+				}
+			}
+			if n.count("getFirstAvailableBlock") != 1 {
+				t.Errorf("getFirstAvailableBlock calls=%d; want 1", n.count("getFirstAvailableBlock"))
+			}
 			if requests == 0 || requests != len(n.log) {
 				t.Errorf("requests=%d downstream=%d", requests, len(n.log))
+			}
+		}},
+		{name: "get_blocks_mismatch_fail", node: &scenarioSOLNode{genesis: scenarioSOLGenesis, sigCount: 1, blocksResult: []uint64{scenarioSOLSlot - 1}}, check: func(t *testing.T, got map[string]scenarioIssue, n *scenarioSOLNode, _ int) {
+			if got["solana/GetBlocks"].Status != "FAIL" || n.count("getBlocks") != 1 {
+				t.Errorf("GetBlocks = %+v, getBlocks calls=%d; want FAIL after one request", got["solana/GetBlocks"], n.count("getBlocks"))
 			}
 		}},
 		// LS-06: genesis mismatch stops before any other request.

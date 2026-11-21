@@ -366,7 +366,7 @@ func testScenarioCatalog(t *testing.T) {
 			nonSubmit++
 		}
 	}
-	if nonSubmit != 62 || len(reflected) != 67 {
+	if nonSubmit != 64 || len(reflected) != 69 {
 		t.Fatalf("SDK reflection drifted: %d non-submit, %d total", nonSubmit, len(reflected))
 	}
 	if _, ok := reflect.TypeOf((*jsonrpc.Client)(nil)).MethodByName("RawCall"); !ok {

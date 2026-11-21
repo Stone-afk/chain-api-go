@@ -111,10 +111,18 @@ func runScenarioSolana(ctx context.Context, _ scenarioConfig, chainCfg scenarioC
 	if record("GetSlotWithOpts", err) {
 		check("GetSlotWithOpts", slot > 0)
 	}
+	if out[chain+"/GetSlotWithOpts"].Status != "PASS" {
+		out[chain+"/GetFirstAvailableBlock"] = scenarioIssueDependency
+	} else {
+		first, err := client.GetFirstAvailableBlock(ctx)
+		if record("GetFirstAvailableBlock", err) {
+			check("GetFirstAvailableBlock", first <= slot)
+		}
+	}
 	var raw []byte
 	var signature ns.Signature
 	if out[chain+"/GetSlotWithOpts"].Status != "PASS" {
-		setAll(scenarioIssueDependency, "GetBlockWithOpts", "GetTransaction", "GetSignatureStatuses")
+		setAll(scenarioIssueDependency, "GetBlockWithOpts", "GetBlocks", "GetTransaction", "GetSignatureStatuses")
 	} else {
 		block, err := client.GetBlockWithOpts(ctx, slot, &srpc.GetBlockOpts{TransactionDetails: srpc.TransactionDetailsSignatures, Rewards: &noRewards, Commitment: srpc.CommitmentFinalized, MaxSupportedTransactionVersion: &maxVersion})
 		if record("GetBlockWithOpts", err) {
@@ -143,6 +151,14 @@ func runScenarioSolana(ctx context.Context, _ scenarioConfig, chainCfg scenarioC
 			if record("GetSignatureStatuses", err) {
 				check("GetSignatureStatuses", statuses != nil && len(statuses.Value) == 1 && statuses.Value[0] != nil && statuses.Value[0].Slot == slot && statuses.Value[0].ConfirmationStatus == srpc.ConfirmationStatusFinalized)
 			}
+		}
+		if out[chain+"/GetBlockWithOpts"].Status == "PASS" {
+			blocks, err := client.GetBlocks(ctx, slot, &slot, srpc.CommitmentFinalized)
+			if record("GetBlocks", err) {
+				check("GetBlocks", len(blocks) == 1 && blocks[0] == slot)
+			}
+		} else {
+			out[chain+"/GetBlocks"] = scenarioIssueDependency
 		}
 	}
 

@@ -25,6 +25,8 @@ type nativeContract interface {
 	GetGenesisHash(context.Context) (ns.Hash, error)
 	GetSlotWithOpts(context.Context, *srpc.GetSlotOpts) (uint64, error)
 	GetBlockWithOpts(context.Context, uint64, *srpc.GetBlockOpts) (*srpc.GetBlockResult, error)
+	GetBlocks(context.Context, uint64, *uint64, srpc.CommitmentType) (srpc.BlocksResult, error)
+	GetFirstAvailableBlock(context.Context) (uint64, error)
 	GetBalanceWithOpts(context.Context, ns.PublicKey, *srpc.GetBalanceOpts) (*srpc.GetBalanceResult, error)
 	GetAccountInfoWithOpts(context.Context, ns.PublicKey, *srpc.GetAccountInfoOpts) (*srpc.GetAccountInfoResult, error)
 	GetLatestBlockhashWithOpts(context.Context, *srpc.GetLatestBlockhashOpts) (*srpc.GetLatestBlockhashResult, error)
@@ -74,7 +76,7 @@ func nativeClient(t *testing.T, f *fakeCaller) nativeContract {
 	t.Helper()
 	n, ok := any(client(t, f)).(nativeContract)
 	if !ok {
-		t.Fatal("NS-01/05: Client lacks frozen eleven-method native Solana contract")
+		t.Fatal("NS-01/05: Client lacks frozen thirteen-method native Solana contract")
 	}
 	return n
 }

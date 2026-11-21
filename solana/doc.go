@@ -6,10 +6,10 @@
 // Construction performs no network I/O, configuration reads or background work.
 // No complete upstream client or default network transport is exposed.
 //
-// The eleven context-first methods are GetGenesisHash, GetSlotWithOpts,
-// GetBlockWithOpts, GetBalanceWithOpts, GetAccountInfoWithOpts,
-// GetLatestBlockhashWithOpts, GetSignatureStatuses, GetTransaction,
-// GetFeeForMessageWithOpts, SimulateRawTransactionWithOpts and
+// The thirteen context-first methods are GetGenesisHash, GetSlotWithOpts,
+// GetBlockWithOpts, GetBlocks, GetFirstAvailableBlock, GetBalanceWithOpts,
+// GetAccountInfoWithOpts, GetLatestBlockhashWithOpts, GetSignatureStatuses,
+// GetTransaction, GetFeeForMessageWithOpts, SimulateRawTransactionWithOpts and
 // SendEncodedTransactionWithOpts. Parameters/results use native PublicKey, Hash,
 // Signature and rpc types. GetSignatureStatuses takes a history bool followed
 // by variadic signatures. Native options/results retain their pointer contracts.

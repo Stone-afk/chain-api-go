@@ -31,6 +31,16 @@ func methodCases() []methodCase {
 			same(t, b.Transactions[1].Version, srpc.TransactionVersion(0))
 			same(t, b.Transactions[1].Meta.Fee, uint64(9007199254740993))
 		}},
+		{"getBlocks", `[5,10,{"commitment":"finalized"}]`, `[5,7,10]`, func(c nativeContract, x context.Context) (any, error) {
+			end := uint64(10)
+			return c.GetBlocks(x, 5, &end, srpc.CommitmentFinalized)
+		}, func(t *testing.T, v any) { same(t, v, srpc.BlocksResult{5, 7, 10}) }},
+		{"getBlocks", `[5]`, `[]`, func(c nativeContract, x context.Context) (any, error) {
+			return c.GetBlocks(x, 5, nil, "")
+		}, func(t *testing.T, v any) { same(t, len(v.(srpc.BlocksResult)), 0) }},
+		{"getFirstAvailableBlock", `null`, `18446744073709551615`, func(c nativeContract, x context.Context) (any, error) {
+			return c.GetFirstAvailableBlock(x)
+		}, func(t *testing.T, v any) { same(t, v, ^uint64(0)) }},
 		{"getBalance", `["` + k + `"]`, `{"context":{"slot":19},"value":9007199254740993}`, func(c nativeContract, x context.Context) (any, error) { return c.GetBalanceWithOpts(x, testKey, nil) }, func(t *testing.T, v any) {
 			b := v.(*srpc.GetBalanceResult)
 			same(t, b.Context.Slot, uint64(19))

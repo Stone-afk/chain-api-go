@@ -15,6 +15,12 @@ func (c *Client) GetSlotWithOpts(ctx context.Context, opts *srpc.GetSlotOpts) (u
 func (c *Client) GetBlockWithOpts(ctx context.Context, slot uint64, opts *srpc.GetBlockOpts) (*srpc.GetBlockResult, error) {
 	return c.rpc.GetBlockWithOpts(ctx, slot, opts)
 }
+func (c *Client) GetBlocks(ctx context.Context, startSlot uint64, endSlot *uint64, commitment srpc.CommitmentType) (srpc.BlocksResult, error) {
+	return c.rpc.GetBlocks(ctx, startSlot, endSlot, commitment)
+}
+func (c *Client) GetFirstAvailableBlock(ctx context.Context) (uint64, error) {
+	return c.rpc.GetFirstAvailableBlock(ctx)
+}
 func (c *Client) GetBalanceWithOpts(ctx context.Context, key ns.PublicKey, opts *srpc.GetBalanceOpts) (*srpc.GetBalanceResult, error) {
 	return c.rpc.GetBalanceWithOpts(ctx, key, opts)
 }
